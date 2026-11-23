@@ -43,7 +43,8 @@ object ClientEvents {
         put("audio", Base64.getEncoder().encodeToString(pcm))
     }.toString()
 
-    fun imageItem(jpeg: ByteArray): String = buildJsonObject {
+    /** [detail] 은 "low"(빠르고 쌈) 또는 "high"(작은 글씨까지 읽음). */
+    fun imageItem(jpeg: ByteArray, detail: String = "low"): String = buildJsonObject {
         put("type", "conversation.item.create")
         putJsonObject("item") {
             put("type", "message")
@@ -52,7 +53,7 @@ object ClientEvents {
                 add(buildJsonObject {
                     put("type", "input_image")
                     put("image_url", "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(jpeg))
-                    put("detail", "low")
+                    put("detail", detail)
                 })
             }
         }

@@ -168,10 +168,11 @@ class CameraFrameSource(private val context: Context) : FrameSource, CaptureCont
             postRotate(image.imageInfo.rotationDegrees.toFloat())
         }
         val upright = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-        return ByteArrayOutputStream().also { upright.compress(Bitmap.CompressFormat.JPEG, 70, it) }.toByteArray()
+        return ByteArrayOutputStream().also { upright.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray()
     }
 
     private companion object {
-        const val MAX_SIDE = 768
+        // 문제나 간판의 작은 글씨를 읽을 수 있는 크기.
+        const val MAX_SIDE = 1536
     }
 }

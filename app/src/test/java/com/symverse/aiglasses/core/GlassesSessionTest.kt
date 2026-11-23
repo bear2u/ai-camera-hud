@@ -292,7 +292,7 @@ class GlassesSessionTest {
         assertEquals(Status.Thinking, session.hud.status)
         assertFalse(mic.running)
         assertEquals(listOf("session.update", "conversation.item.create", "response.create"), sentTypes())
-        assertEquals(ClientEvents.imageItem(byteArrayOf(9, 9)), transport.sent[1])
+        assertEquals(ClientEvents.imageItem(byteArrayOf(9, 9), detail = "high"), transport.sent[1])
         val response = Json.parseToJsonElement(transport.sent.last()).jsonObject.getValue("response").jsonObject
         assertEquals(listOf("text"), response.getValue("output_modalities").jsonArray.map { it.jsonPrimitive.content })
         assertTrue(response.getValue("instructions").jsonPrimitive.content.contains("한국어로 번역"))
@@ -404,5 +404,34 @@ class GlassesSessionTest {
         receive("""{"type":"response.output_text.delta","delta":"늦게 온 번역"}""")
 
         assertEquals(HudState(status = Status.Idle), session.hud)
+    }
+
+    @Test
+    fun shouldSendHighDetailFrameWithSolveInstructionAndTextOnlyResponse() {
+        connect()
+        session.mode = Mode.Solve
+
+        session.tap()
+
+        assertEquals(Status.Thinking, session.hud.status)
+        assertFalse(mic.running)
+        assertEquals(listOf("session.update", "conversation.item.create", "response.create"), sentTypes())
+        assertEquals(ClientEvents.imageItem(byteArrayOf(9, 9), detail = "high"), transport.sent[1])
+        val response = Json.parseToJsonElement(transport.sent.last()).jsonObject.getValue("response").jsonObject
+        assertEquals(listOf("text"), response.getValue("output_modalities").jsonArray.map { it.jsonPrimitive.content })
+        assertTrue(response.getValue("instructions").jsonPrimitive.content.contains("문제를 풀"))
+    }
+
+    @Test
+    fun shouldShowSolutionTextOnHud() {
+        connect()
+        session.mode = Mode.Solve
+        session.tap()
+
+        receive("""{"type":"response.output_text.delta","delta":"답: x = 4\n"}""")
+        receive("""{"type":"response.output_text.delta","delta":"풀이: 1) 2x = 8"}""")
+        receive("""{"type":"response.done"}""")
+
+        assertEquals(HudState(status = Status.Idle, solutionText = "답: x = 4\n풀이: 1) 2x = 8"), session.hud)
     }
 }

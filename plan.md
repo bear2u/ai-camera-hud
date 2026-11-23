@@ -40,6 +40,7 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 | 보고 묻기 | 탭 → 듣기, 다시 탭 → 프레임 1장 + 음성 전송 → 음성 답 + HUD 자막, 말하는 중 탭 → 중단 | 어시스턴트 |
 | 글자 번역 | 탭 → 프레임 1장 + "보이는 글자를 한국어로 번역" 지시 → HUD 텍스트 (`response.create`에 `output_modalities: ["text"]`) | 어시스턴트 |
 | 대화 번역 | 탭 → 계속 듣기, 상대 말이 한국어 자막으로 흐름, 다시 탭 → 정지 | 번역 전용 |
+| 문제 풀이 | 탭 → 사진 1장(고화질) + 풀이 지시 → 풀이 카드에 글자로 표시 | 어시스턴트 |
 | 촬영 | 오른쪽 사진·동영상 버튼으로 갤러리에 저장 (음성 명령 촬영은 하지 않음) | 없음 |
 
 ### 구조 (단일 모듈 `app`, 패키지 `com.symverse.aiglasses`)
@@ -147,6 +148,14 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [x] shouldIgnoreLateTranslationAfterConversationStops
 - [x] 모드 전환에 "대화 번역" 추가, 자막 카드(오른쪽 아래). 대화 번역 중에는 블루투스 이어폰이 있어도 기기 마이크로 듣는다
 - [ ] 실기기 확인 (사용자): 상대의 말이 한국어 자막으로 뜨는지, 주변 소음에서 턴이 잘 나뉘는지
+
+### 문제 풀이 (2026-11-23 추가)
+- [x] shouldEncodeImageItemWithHighDetailWhenRequested (`RealtimeEventsTest`)
+- [x] 글자 번역과 문제 풀이는 사진을 고화질(`detail: "high"`, 긴 변 1536px)로 보낸다
+- [x] shouldSendHighDetailFrameWithSolveInstructionAndTextOnlyResponse, shouldShowSolutionTextOnHud (`GlassesSessionTest`)
+- [x] "문제 풀이" 모드와 풀이 카드(오른쪽 아래, 손으로 올려 볼 수 있음). 모드 전환은 상태 표시 아래 줄로 옮김
+- [x] 실서버 스모크 테스트: "3x + 7 = 25" 사진 → "답: 6"과 풀이
+- [ ] 실기기 확인 (사용자): 교재의 실제 문제를 비췄을 때 읽기와 풀이 정확도. 사진 한 장으로 풀기 때문에 어려운 문제는 틀릴 수 있다
 
 ### 이후 단계 (이번 범위 밖)
 화면 속 사물 위치 라벨(기기 내 사물 검출 + AI 이름 붙이기), 장소 정보(위치 + 지도 API), 웨이크워드, 60분 세션 만료 재연결, 임시 키 백엔드, WebRTC 전송, 오프라인 번역, 텔레프롬프터, 내비게이션.

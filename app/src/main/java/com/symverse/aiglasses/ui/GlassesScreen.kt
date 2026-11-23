@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.symverse.aiglasses.core.CaptureState
@@ -80,11 +81,9 @@ fun GlassesScreen(
             }
             if (hudVisible) Column(Modifier.align(Alignment.TopStart), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 val cardWidth = Modifier.fillMaxWidth(0.42f)
-                // 상태와 모드 전환은 왼쪽에 붙여 오른쪽 버튼들과 겹치지 않게 한다.
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    StatusCard(hud.status)
-                    ModeSwitch(mode = mode, onSelect = onSelectMode)
-                }
+                // 상태와 모드 전환은 왼쪽에 위아래로 두어 오른쪽 버튼들과 겹치지 않게 한다.
+                StatusCard(hud.status)
+                ModeSwitch(mode = mode, onSelect = onSelectMode)
                 if (hud.userText.isNotBlank()) TextCard(title = "나", text = hud.userText, modifier = cardWidth)
                 if (hud.translationText.isNotBlank()) TextCard(title = "글자 번역", text = hud.translationText, modifier = cardWidth)
                 hud.error?.let { TextCard(title = "오류", text = it, modifier = cardWidth, line = Alert) }
@@ -99,6 +98,7 @@ fun GlassesScreen(
             }
 
             val bottomCard = when {
+                hud.solutionText.isNotBlank() -> "문제 풀이" to hud.solutionText
                 hud.captions.isNotEmpty() -> "대화 번역" to hud.captions.joinToString("\n")
                 hud.assistantText.isNotBlank() -> "AI 어시스턴트" to hud.assistantText
                 else -> null
@@ -112,6 +112,9 @@ fun GlassesScreen(
                         .align(Alignment.BottomEnd)
                         .padding(end = CaptureColumnWidth + 12.dp)
                         .fillMaxWidth(0.46f),
+                    // 풀이는 길어서 더 크게 보여 주고, 손으로 올려 볼 수 있게 자동 스크롤을 끈다.
+                    maxHeight = if (hud.solutionText.isNotBlank()) 280.dp else 180.dp,
+                    followTail = hud.solutionText.isBlank(),
                 )
             }
             Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -169,6 +172,7 @@ private fun ModeSwitch(mode: Mode, onSelect: (Mode) -> Unit, modifier: Modifier 
         ModeOption("질문", selected = mode == Mode.Ask, onClick = { onSelect(Mode.Ask) })
         ModeOption("글자 번역", selected = mode == Mode.TranslateText, onClick = { onSelect(Mode.TranslateText) })
         ModeOption("대화 번역", selected = mode == Mode.Conversation, onClick = { onSelect(Mode.Conversation) })
+        ModeOption("문제 풀이", selected = mode == Mode.Solve, onClick = { onSelect(Mode.Solve) })
     }
 }
 
@@ -207,15 +211,22 @@ private fun AiToggle(on: Boolean, onClick: () -> Unit, modifier: Modifier = Modi
 }
 
 @Composable
-private fun TextCard(title: String, text: String, modifier: Modifier = Modifier, line: Color = CardLine) {
+private fun TextCard(
+    title: String,
+    text: String,
+    modifier: Modifier = Modifier,
+    line: Color = CardLine,
+    maxHeight: Dp = 180.dp,
+    followTail: Boolean = true,
+) {
     val scroll = rememberScrollState()
-    LaunchedEffect(text) { scroll.scrollTo(scroll.maxValue) }
+    if (followTail) LaunchedEffect(text) { scroll.scrollTo(scroll.maxValue) }
     Column(
         modifier
             .background(CardFill, CardShape)
             .border(1.dp, line, CardShape)
             .padding(14.dp)
-            .heightIn(max = 180.dp)
+            .heightIn(max = maxHeight)
             .verticalScroll(scroll),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -257,6 +268,7 @@ private fun hint(status: Status, mode: Mode): String = when (status) {
         Mode.Ask -> "화면을 탭하고 질문하세요"
         Mode.TranslateText -> "글자를 비추고 화면을 탭하세요"
         Mode.Conversation -> "탭하면 상대의 말을 한국어로 번역합니다"
+        Mode.Solve -> "문제를 화면에 크게 비추고 탭하세요"
     }
     Status.Listening ->
         if (mode == Mode.Conversation) "번역하고 있습니다. 탭하면 멈춥니다" else "듣고 있습니다. 다 말했으면 탭하세요"

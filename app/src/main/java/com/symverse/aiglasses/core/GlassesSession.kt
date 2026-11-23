@@ -26,6 +26,9 @@ class GlassesSession(
     private var conversing = false
     private var captionOpen = false
 
+    /** 사진으로 요청한 일이 문제 풀이면 true, 글자 번역이면 false. */
+    private var solving = false
+
     private var playingItemId: String? = null
 
     /** 끊은 응답의 늦게 도착한 음성을 버린다. */
@@ -59,7 +62,8 @@ class GlassesSession(
             Status.Idle -> if (!stopPlayback()) {
                 when (mode) {
                     Mode.Ask -> startListening()
-                    Mode.TranslateText -> startTextTranslation()
+                    Mode.TranslateText -> startPhotoTask(solve = false)
+                    Mode.Solve -> startPhotoTask(solve = true)
                     Mode.Conversation -> startConversation()
                 }
             }
@@ -118,20 +122,23 @@ class GlassesSession(
         captionOpen = true
     }
 
-    private fun startTextTranslation() {
+    /** 사진 한 장만 보내 글자로 답을 받는다: 글자 번역 또는 문제 풀이. */
+    private fun startPhotoTask(solve: Boolean) {
+        solving = solve
         hud = HudState(status = Status.Thinking)
-        frames.capture(::onTranslationFrame)
+        frames.capture(::onPhotoTaskFrame)
     }
 
     @Synchronized
-    private fun onTranslationFrame(jpeg: ByteArray?) {
+    private fun onPhotoTaskFrame(jpeg: ByteArray?) {
         if (hud.status != Status.Thinking) return
         if (jpeg == null) {
             hud = hud.copy(status = Status.Idle, error = "카메라 장면을 가져오지 못했습니다.")
             return
         }
-        transport.send(ClientEvents.imageItem(jpeg))
-        transport.send(ClientEvents.responseCreate(listOf("text"), TRANSLATE_INSTRUCTIONS))
+        transport.send(ClientEvents.imageItem(jpeg, detail = "high"))
+        val instructions = if (solving) SOLVE_INSTRUCTIONS else TRANSLATE_INSTRUCTIONS
+        transport.send(ClientEvents.responseCreate(listOf("text"), instructions))
     }
 
     private fun finishListening() {
@@ -166,7 +173,11 @@ class GlassesSession(
                 if (conversing) {
                     appendCaption(received.text)
                 } else if (hud.status == Status.Thinking) {
-                    hud = hud.copy(translationText = hud.translationText + received.text)
+                    hud = if (solving) {
+                        hud.copy(solutionText = hud.solutionText + received.text)
+                    } else {
+                        hud.copy(translationText = hud.translationText + received.text)
+                    }
                 }
             is ServerEvent.InputTranscript -> hud = hud.copy(userText = received.text)
             is ServerEvent.ResponseDone -> if (conversing) captionOpen = false else hud = hud.copy(status = Status.Idle)
@@ -200,6 +211,10 @@ class GlassesSession(
     private companion object {
         const val MAX_CAPTIONS = 3
         const val MISSING_KEY = "API 키가 없습니다. 오른쪽 위 설정에서 입력하세요."
+        const val SOLVE_INSTRUCTIONS =
+            "방금 받은 사진에 있는 문제를 풀어라. 먼저 '답: ...'을 한 줄로 쓰고, 이어서 '풀이:' 아래에 핵심 단계를 " +
+                "번호를 붙여 짧게 써라. 한국어로 쓰고, 수식은 LaTeX나 마크다운 없이 일반 문자(예: x^2, √, ×, ÷)로 써라. " +
+                "문제가 여러 개면 번호별로 답하고, 문제가 보이지 않거나 글씨를 읽을 수 없으면 그렇게만 말해라."
         const val TRANSLATE_INSTRUCTIONS =
             "방금 받은 사진에 보이는 글자(간판, 메뉴, 표지판 등)를 읽고 한국어로 번역해라. " +
                 "'원문 → 번역' 형식으로 한 줄에 하나씩만 써라. 글자가 없으면 '보이는 글자가 없습니다'라고만 답해라."

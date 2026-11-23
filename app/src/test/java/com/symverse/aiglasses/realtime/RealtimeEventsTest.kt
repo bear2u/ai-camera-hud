@@ -151,4 +151,12 @@ class RealtimeEventsTest {
         assertEquals(true, session.obj("audio").obj("input").obj("turn_detection").getValue("create_response").jsonPrimitive.content.toBoolean())
         assertEquals(true, session.str("instructions").contains("한국어로 번역"))
     }
+
+    @Test
+    fun shouldEncodeImageItemWithHighDetailWhenRequested() {
+        val content = parse(ClientEvents.imageItem(byteArrayOf(1, 2, 3), detail = "high"))
+            .obj("item").getValue("content").jsonArray.single().jsonObject
+
+        assertEquals("high", content.str("detail"))
+    }
 }

@@ -286,4 +286,46 @@ class RealtimeLiveSmokeTest {
             }
         }
     }
+
+    /** 문제 사진을 고화질로 보내 글자 풀이를 받는지 본다. */
+    @Test
+    fun shouldSolveProblemInImageAsText() {
+        assumeTrue(System.getenv("OPENAI_LIVE") == "1")
+        val key = Properties().apply { File("../local.properties").inputStream().use(::load) }
+            .getProperty("OPENAI_API_KEY").orEmpty()
+        assumeTrue(key.isNotBlank())
+
+        val transport = OkHttpRealtimeTransport(key)
+        val opened = CountDownLatch(1)
+        transport.connect(listenerInto(messages, opened))
+        val text = StringBuilder()
+        try {
+            assertTrue(opened.await(15, TimeUnit.SECONDS))
+            transport.send(ClientEvents.sessionUpdate("너는 AI 안경의 음성 비서다."))
+            transport.send(ClientEvents.imageItem(signJpeg("3x + 7 = 25,  x = ?"), detail = "high"))
+            transport.send(
+                ClientEvents.responseCreate(
+                    listOf("text"),
+                    "방금 받은 사진에 있는 문제를 풀어라. 먼저 '답: ...'을 한 줄로 쓰고, 이어서 '풀이:' 아래에 핵심 단계를 짧게 써라.",
+                ),
+            )
+            var done = false
+            val deadline = System.currentTimeMillis() + 90_000
+            while (!done && System.currentTimeMillis() < deadline) {
+                val raw = messages.poll(500, TimeUnit.MILLISECONDS) ?: continue
+                when (val event = ServerEvent.decode(raw)) {
+                    is ServerEvent.TextDelta -> text.append(event.text)
+                    is ServerEvent.Error -> log.appendLine("[풀이] 오류: ${event.message}")
+                    is ServerEvent.ResponseDone -> done = true
+                    else -> Unit
+                }
+            }
+            assertTrue("response.done 을 받지 못함", done)
+        } finally {
+            transport.close()
+            log.appendLine("[풀이] $text")
+            File("build/live-solve.txt").apply { parentFile?.mkdirs() }.writeText(log.toString())
+        }
+        assertTrue("답 6 이 없음: $text", text.contains("6"))
+    }
 }
