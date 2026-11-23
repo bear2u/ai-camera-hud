@@ -612,4 +612,17 @@ class GlassesSessionTest {
             transport.sent.takeLast(4),
         )
     }
+
+    @Test
+    fun shouldAskByVoiceWhileInNavigateMode() {
+        connect()
+        session.mode = Mode.Navigate
+
+        session.tap()
+        mic.emit(byteArrayOf(1))
+        session.tap()
+
+        assertEquals(ClientEvents.responseCreate(listOf("audio")), transport.sent.last())
+        assertEquals(Status.Thinking, session.hud.status)
+    }
 }

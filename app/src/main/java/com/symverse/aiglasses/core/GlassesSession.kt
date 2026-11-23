@@ -67,7 +67,8 @@ class GlassesSession(
         when (hud.status) {
             Status.Idle -> if (!stopPlayback()) {
                 when (mode) {
-                    Mode.Ask -> {
+                    // 길안내 중에도 보이는 것에 대해 물을 수 있다. 목적지는 글자로 따로 받는다.
+                    Mode.Ask, Mode.Navigate -> {
                         solving = false
                         startListening()
                     }

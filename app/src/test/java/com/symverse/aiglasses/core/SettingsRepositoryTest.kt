@@ -42,4 +42,16 @@ class SettingsRepositoryTest {
             AppSettings(model = "gpt-realtime-2.1-mini").realtimeUrl,
         )
     }
+
+    @Test
+    fun shouldSaveTrimmedGoogleMapsKey() {
+        repository.save(apiKey = "my-key", model = "gpt-realtime-2.1", googleMapsKey = " maps-key ")
+
+        assertEquals("maps-key", SettingsRepository(store).load().googleMapsKey)
+        assertEquals("", SettingsRepository(object : KeyValueStore {
+            override fun get(key: String): String? = null
+
+            override fun put(key: String, value: String) = Unit
+        }).load().googleMapsKey)
+    }
 }

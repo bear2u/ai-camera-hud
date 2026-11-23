@@ -57,6 +57,8 @@ import com.symverse.aiglasses.core.CaptureState
 import com.symverse.aiglasses.core.HudState
 import com.symverse.aiglasses.core.LogEntry
 import com.symverse.aiglasses.core.Mode
+import com.symverse.aiglasses.core.NavHud
+import com.symverse.aiglasses.core.NavPhase
 import com.symverse.aiglasses.core.Speaker
 import com.symverse.aiglasses.core.Status
 
@@ -81,6 +83,9 @@ fun GlassesScreen(
     onTakePhoto: () -> Unit,
     onToggleVideo: () -> Unit,
     onSendText: (String) -> Unit,
+    nav: NavHud,
+    heading: Float?,
+    onStopNavigation: () -> Unit,
 ) {
     var hudVisible by rememberSaveable { mutableStateOf(true) }
     var chatVisible by rememberSaveable { mutableStateOf(true) }
@@ -116,6 +121,15 @@ fun GlassesScreen(
                 }
             }
             capture.message?.let { CaptureNotice(it, Modifier.align(Alignment.BottomEnd)) }
+            if (hudVisible && nav.phase != NavPhase.Off) {
+                NavCard(
+                    nav = nav,
+                    heading = heading,
+                    onClose = onStopNavigation,
+                    // 위쪽 아이콘 줄 아래, 오른쪽 촬영 버튼 왼쪽에 둔다.
+                    modifier = Modifier.align(Alignment.TopEnd).padding(top = 60.dp, end = 60.dp).fillMaxWidth(0.42f),
+                )
+            }
             Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (hudVisible) {
                     // 채팅창만 접어서 카메라 화면을 넓게 본다. 화면 탭으로 말하기는 그대로 된다.
@@ -303,6 +317,7 @@ private fun ModeSwitch(mode: Mode, onSelect: (Mode) -> Unit, modifier: Modifier 
         ModeOption("번역", selected = mode == Mode.TranslateText, onClick = { onSelect(Mode.TranslateText) })
         ModeOption("통역", selected = mode == Mode.Conversation, onClick = { onSelect(Mode.Conversation) })
         ModeOption("풀이", selected = mode == Mode.Solve, onClick = { onSelect(Mode.Solve) })
+        ModeOption("길안내", selected = mode == Mode.Navigate, onClick = { onSelect(Mode.Navigate) })
     }
 }
 
@@ -339,7 +354,7 @@ private fun micLabel(status: Status, mode: Mode): String = when (status) {
     Status.Idle, Status.Off -> when (mode) {
         Mode.TranslateText -> "번역"
         Mode.Conversation -> "시작"
-        Mode.Ask, Mode.Solve -> "말하기"
+        Mode.Ask, Mode.Solve, Mode.Navigate -> "말하기"
     }
 }
 
@@ -367,6 +382,7 @@ private fun hint(status: Status, mode: Mode): String = when (status) {
         Mode.TranslateText -> "글자를 비추고 버튼을 누르면 번역합니다"
         Mode.Conversation -> "마이크를 누르면 상대의 말을 한국어로 통역합니다"
         Mode.Solve -> "문제를 크게 비추고 글이나 말로 물어보세요"
+        Mode.Navigate -> "목적지를 입력하면 걸어가는 길을 안내합니다"
     }
     Status.Listening -> when (mode) {
         Mode.Conversation -> "통역하고 있습니다"

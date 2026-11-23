@@ -26,6 +26,11 @@ import com.symverse.aiglasses.core.HudState
 import com.symverse.aiglasses.core.KeyTestResult
 import com.symverse.aiglasses.core.KeyTester
 import com.symverse.aiglasses.core.Mode
+import com.symverse.aiglasses.core.NavHud
+import com.symverse.aiglasses.core.NavigationSession
+import com.symverse.aiglasses.audio.VoiceAnnouncer
+import com.symverse.aiglasses.location.DeviceLocation
+import com.symverse.aiglasses.location.GoogleRouteFetcher
 import com.symverse.aiglasses.core.SettingsRepository
 import com.symverse.aiglasses.core.Status
 import com.symverse.aiglasses.realtime.OkHttpRealtimeTransport
@@ -47,6 +52,11 @@ class MainActivity : ComponentActivity() {
     private lateinit var camera: CameraFrameSource
     private lateinit var captureActions: CaptureActions
     private lateinit var settingsRepository: SettingsRepository
+    private lateinit var deviceLocation: DeviceLocation
+    private lateinit var announcer: VoiceAnnouncer
+    private lateinit var navigation: NavigationSession
+    private var nav by mutableStateOf(NavHud())
+    private var heading by mutableStateOf<Float?>(null)
     private val mic by lazy { MicRecorder(BluetoothMicRoute(applicationContext)) }
     private val player by lazy { PcmPlayer() }
     private var transport: OkHttpRealtimeTransport? = null
@@ -55,7 +65,12 @@ class MainActivity : ComponentActivity() {
 
     private val permissionRequest =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
-            if (result.values.all { it }) startGlasses() else showPermissionNeeded()
+            // 위치는 없어도 되지만 카메라와 마이크는 있어야 한다.
+            when {
+                !hasPermissions() -> showPermissionNeeded()
+                session == null -> startGlasses()
+                hasLocationPermission() -> deviceLocation.start()
+            }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +81,15 @@ class MainActivity : ComponentActivity() {
         camera = CameraFrameSource(applicationContext)
         captureActions = CaptureActions(camera) { capture = it }
         settingsRepository = SettingsRepository(PrefsKeyValueStore(applicationContext))
+        deviceLocation = DeviceLocation(applicationContext)
+        announcer = VoiceAnnouncer(applicationContext)
+        navigation = NavigationSession(
+            routes = GoogleRouteFetcher { settings.googleMapsKey },
+            location = deviceLocation,
+            announce = announcer::speak,
+        ) { nav = it }
+        deviceLocation.onPosition = { navigation.onLocation(it) }
+        deviceLocation.onHeading = { heading = it }
         settings = settingsRepository.load()
         setContent {
             GlassesScreen(
@@ -79,7 +103,10 @@ class MainActivity : ComponentActivity() {
                 capture = capture,
                 onTakePhoto = { captureActions.takePhoto() },
                 onToggleVideo = { captureActions.toggleVideo() },
-                onSendText = { text -> session?.sendText(text) },
+                onSendText = ::onSendText,
+                nav = nav,
+                heading = heading,
+                onStopNavigation = { navigation.stop() },
             )
             if (showSettings) {
                 BackHandler(onBack = ::closeSettings)
@@ -92,8 +119,22 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
-        if (hasPermissions()) startGlasses() else permissionRequest.launch(PERMISSIONS)
+        if (hasPermissions()) {
+            startGlasses()
+            // 이전 버전에서 카메라·마이크만 허용한 경우 위치를 따로 묻는다.
+            if (!hasLocationPermission()) permissionRequest.launch(LOCATION_PERMISSIONS)
+        } else {
+            permissionRequest.launch(PERMISSIONS + LOCATION_PERMISSIONS)
+        }
     }
+
+    /** 길안내 모드에서 입력한 글은 목적지이고, 그 밖에는 AI에게 하는 질문이다. */
+    private fun onSendText(text: String) {
+        if (mode == Mode.Navigate) navigation.start(text) else session?.sendText(text)
+    }
+
+    private fun hasLocationPermission(): Boolean =
+        LOCATION_PERMISSIONS.any { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
 
     private fun hasPermissions(): Boolean =
         PERMISSIONS.all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
@@ -120,8 +161,8 @@ class MainActivity : ComponentActivity() {
         showSettings = true
     }
 
-    private fun saveSettings(apiKey: String, model: String) {
-        settings = settingsRepository.save(apiKey, model)
+    private fun saveSettings(apiKey: String, model: String, googleMapsKey: String) {
+        settings = settingsRepository.save(apiKey, model, googleMapsKey)
         closeSettings()
     }
 
@@ -133,6 +174,7 @@ class MainActivity : ComponentActivity() {
 
     private fun startGlasses() {
         camera.bind(this)
+        if (hasLocationPermission()) deviceLocation.start()
         connect()
     }
 
@@ -141,7 +183,7 @@ class MainActivity : ComponentActivity() {
         session?.stop()
         val current = settings
         val newTransport = OkHttpRealtimeTransport(current.apiKey, current.realtimeUrl).also { transport = it }
-        session = GlassesSession(current.apiKey, newTransport, mic, camera, player) { hud = it }.also {
+        session = GlassesSession(current.apiKey, newTransport, mic, camera, player, deviceLocation) { hud = it }.also {
             it.mode = mode
             it.start()
         }
@@ -158,11 +200,13 @@ class MainActivity : ComponentActivity() {
             resumeOnStart = true
             current.stop()
         }
+        deviceLocation.stop()
         super.onStop()
     }
 
     override fun onStart() {
         super.onStart()
+        if (hasLocationPermission()) deviceLocation.start()
         if (resumeOnStart) {
             resumeOnStart = false
             session?.start()
@@ -171,10 +215,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         session?.stop()
+        announcer.shutdown()
         super.onDestroy()
     }
 
     private companion object {
         val PERMISSIONS = arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+        val LOCATION_PERMISSIONS =
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
     }
 }

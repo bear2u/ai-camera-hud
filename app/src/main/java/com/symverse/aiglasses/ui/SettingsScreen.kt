@@ -48,12 +48,13 @@ private val PageFill = Color(0xFF07121F)
 @Composable
 fun SettingsScreen(
     settings: AppSettings,
-    onSave: (apiKey: String, model: String) -> Unit,
+    onSave: (apiKey: String, model: String, googleMapsKey: String) -> Unit,
     onBack: () -> Unit,
     testResult: KeyTestResult?,
     onTest: (apiKey: String, model: String) -> Unit,
 ) {
     val apiKey = rememberTextFieldState(settings.apiKey)
+    val mapsKey = rememberTextFieldState(settings.googleMapsKey)
     var model by remember { mutableStateOf(settings.model) }
     var showKey by remember { mutableStateOf(false) }
     var testedModel by remember { mutableStateOf(settings.model) }
@@ -74,7 +75,7 @@ fun SettingsScreen(
             PillButton("뒤로", onClick = onBack)
             BasicText("설정", style = BodyStyle.copy(fontSize = 22.sp, fontWeight = FontWeight.SemiBold))
             Spacer(Modifier.weight(1f))
-            PillButton("저장", onClick = { onSave(apiKey.text.toString(), model) }, primary = true)
+            PillButton("저장", onClick = { onSave(apiKey.text.toString(), model, mapsKey.text.toString()) }, primary = true)
         }
 
         BasicText("OpenAI API 키", style = TitleStyle.copy(fontSize = 14.sp))
@@ -123,6 +124,30 @@ fun SettingsScreen(
             ModelRow(name = name, selected = name == model, onSelect = { model = name })
         }
         BasicText("계정에 권한이 없는 모델을 고르면 연결할 때 오류가 표시됩니다.", style = TitleStyle)
+
+        BasicText("Google Maps API 키 (길안내용, 선택)", style = TitleStyle.copy(fontSize = 14.sp), modifier = Modifier.padding(top = 8.dp))
+        BasicSecureTextField(
+            state = mapsKey,
+            modifier = Modifier.fillMaxWidth(),
+            textObfuscationMode = if (showKey) TextObfuscationMode.Visible else TextObfuscationMode.Hidden,
+            textStyle = BodyStyle,
+            cursorBrush = SolidColor(CardLine),
+            decorator = { field ->
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(CardFill, CardShape)
+                        .border(1.dp, CardLine, CardShape)
+                        .heightIn(min = 48.dp)
+                        .padding(horizontal = 14.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    if (mapsKey.text.isEmpty()) BasicText("Routes API 를 켠 Google Maps Platform 키", style = BodyStyle.copy(color = InkDim))
+                    field()
+                }
+            },
+        )
+        BasicText("길안내 모드에서만 쓰입니다. 비워 두어도 다른 기능은 그대로 됩니다.", style = TitleStyle)
     }
 }
 

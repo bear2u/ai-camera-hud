@@ -27,7 +27,13 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.cos
 import kotlin.math.sin
 
-internal enum class HudIcon { Send, Mic, Stop, Shutter, Camera, Record, Eye, EyeOff, Chat, ChatOff, Power, Gear, Dots }
+internal enum class HudIcon { Send, Mic, Stop, Shutter, Camera, Record, Eye, EyeOff, Chat, ChatOff, Power, Gear, Dots, Arrow, Close }
+
+/** 버튼이 아닌 곳에 아이콘만 그린다. */
+@Composable
+internal fun HudIconImage(icon: HudIcon, modifier: Modifier = Modifier, tint: Color = Ink) {
+    Canvas(modifier) { draw(icon, tint) }
+}
 
 /** 아이콘만 있는 둥근 버튼. [description] 은 화면 낭독기가 읽는 이름이다. */
 @Composable
@@ -138,5 +144,23 @@ private fun DrawScope.draw(icon: HudIcon, tint: Color) {
             }
         }
         HudIcon.Dots -> listOf(6f, 12f, 18f).forEach { drawCircle(tint, radius = 1.8f * u, center = at(it, 12f)) }
+        // 위쪽을 가리키는 화살표. 돌려서 갈 방향을 나타낸다.
+        HudIcon.Arrow -> drawPath(
+            Path().apply {
+                moveTo(12 * u, 2 * u)
+                lineTo(20 * u, 13 * u)
+                lineTo(14.5f * u, 13 * u)
+                lineTo(14.5f * u, 22 * u)
+                lineTo(9.5f * u, 22 * u)
+                lineTo(9.5f * u, 13 * u)
+                lineTo(4 * u, 13 * u)
+                close()
+            },
+            tint,
+        )
+        HudIcon.Close -> {
+            drawLine(tint, at(6f, 6f), at(18f, 18f), strokeWidth = 2.4f * u, cap = StrokeCap.Round)
+            drawLine(tint, at(18f, 6f), at(6f, 18f), strokeWidth = 2.4f * u, cap = StrokeCap.Round)
+        }
     }
 }
