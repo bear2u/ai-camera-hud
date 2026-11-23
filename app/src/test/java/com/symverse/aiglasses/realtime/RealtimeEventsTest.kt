@@ -159,4 +159,9 @@ class RealtimeEventsTest {
 
         assertEquals("high", content.str("detail"))
     }
+
+    @Test
+    fun shouldDecodeSessionCreated() {
+        assertEquals(ServerEvent.SessionCreated, ServerEvent.decode("""{"type":"session.created","session":{"id":"sess_1"}}"""))
+    }
 }

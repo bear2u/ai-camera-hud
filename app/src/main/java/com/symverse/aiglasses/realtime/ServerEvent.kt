@@ -22,6 +22,8 @@ sealed interface ServerEvent {
 
     data object Unknown : ServerEvent
 
+    data object SessionCreated : ServerEvent
+
     companion object {
         fun decode(json: String): ServerEvent {
             val event = Json.parseToJsonElement(json).jsonObject
@@ -33,6 +35,7 @@ sealed interface ServerEvent {
                 "conversation.item.input_audio_transcription.completed" -> InputTranscript(event.str("transcript"))
                 "response.done" -> ResponseDone
                 "error" -> Error(event["error"]?.jsonObject?.str("message").orEmpty())
+                "session.created" -> SessionCreated
                 else -> Unknown
             }
         }

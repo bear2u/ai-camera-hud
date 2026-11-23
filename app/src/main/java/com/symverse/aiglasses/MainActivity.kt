@@ -23,6 +23,8 @@ import com.symverse.aiglasses.core.CaptureActions
 import com.symverse.aiglasses.core.CaptureState
 import com.symverse.aiglasses.core.GlassesSession
 import com.symverse.aiglasses.core.HudState
+import com.symverse.aiglasses.core.KeyTestResult
+import com.symverse.aiglasses.core.KeyTester
 import com.symverse.aiglasses.core.Mode
 import com.symverse.aiglasses.core.SettingsRepository
 import com.symverse.aiglasses.core.Status
@@ -36,6 +38,11 @@ class MainActivity : ComponentActivity() {
     private var showSettings by mutableStateOf(false)
     private var mode by mutableStateOf(Mode.Ask)
     private var capture by mutableStateOf(CaptureState())
+    private var keyTest by mutableStateOf<KeyTestResult?>(null)
+    private val keyTester = KeyTester(
+        open = { OkHttpRealtimeTransport(it.apiKey, it.realtimeUrl) },
+        onResult = { keyTest = it },
+    )
 
     private lateinit var camera: CameraFrameSource
     private lateinit var captureActions: CaptureActions
@@ -75,7 +82,13 @@ class MainActivity : ComponentActivity() {
             )
             if (showSettings) {
                 BackHandler(onBack = ::closeSettings)
-                SettingsScreen(settings = settings, onSave = ::saveSettings, onBack = ::closeSettings)
+                SettingsScreen(
+                    settings = settings,
+                    onSave = ::saveSettings,
+                    onBack = ::closeSettings,
+                    testResult = keyTest,
+                    onTest = { apiKey, model -> keyTester.test(AppSettings(apiKey, model)) },
+                )
             }
         }
         if (hasPermissions()) startGlasses() else permissionRequest.launch(PERMISSIONS)
@@ -102,6 +115,7 @@ class MainActivity : ComponentActivity() {
 
     private fun openSettings() {
         session?.stop()
+        keyTest = null
         showSettings = true
     }
 
@@ -111,6 +125,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun closeSettings() {
+        keyTester.cancel()
         showSettings = false
         if (hasPermissions()) connect()
     }

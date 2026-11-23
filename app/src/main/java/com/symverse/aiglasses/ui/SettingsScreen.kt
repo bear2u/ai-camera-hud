@@ -40,15 +40,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.symverse.aiglasses.core.AppSettings
+import com.symverse.aiglasses.core.KeyTestResult
 
 private val PageFill = Color(0xFF07121F)
 
 /** API 키와 모델을 정하는 설정 페이지. 저장하면 [onSave], 그냥 나가면 [onBack]. */
 @Composable
-fun SettingsScreen(settings: AppSettings, onSave: (apiKey: String, model: String) -> Unit, onBack: () -> Unit) {
+fun SettingsScreen(
+    settings: AppSettings,
+    onSave: (apiKey: String, model: String) -> Unit,
+    onBack: () -> Unit,
+    testResult: KeyTestResult?,
+    onTest: (apiKey: String, model: String) -> Unit,
+) {
     val apiKey = rememberTextFieldState(settings.apiKey)
     var model by remember { mutableStateOf(settings.model) }
     var showKey by remember { mutableStateOf(false) }
+    var testedModel by remember { mutableStateOf(settings.model) }
 
     Column(
         Modifier
@@ -93,6 +101,20 @@ fun SettingsScreen(settings: AppSettings, onSave: (apiKey: String, model: String
                 },
             )
             PillButton(if (showKey) "숨기기" else "보기", onClick = { showKey = !showKey })
+            PillButton(
+                "연결 테스트",
+                onClick = {
+                    testedModel = model
+                    onTest(apiKey.text.toString(), model)
+                },
+            )
+        }
+        when (testResult) {
+            null -> Unit
+            KeyTestResult.Testing -> BasicText("$testedModel 연결을 확인하고 있습니다…", style = BodyStyle.copy(color = InkDim))
+            KeyTestResult.Success ->
+                BasicText("연결 성공. 이 키로 $testedModel 을(를) 쓸 수 있습니다.", style = BodyStyle.copy(color = Live))
+            is KeyTestResult.Failure -> BasicText("연결 실패: ${testResult.message}", style = BodyStyle.copy(color = Alert))
         }
         BasicText("키는 이 기기의 앱 전용 저장소에만 저장되고 OpenAI 서버 연결에만 쓰입니다.", style = TitleStyle)
 
