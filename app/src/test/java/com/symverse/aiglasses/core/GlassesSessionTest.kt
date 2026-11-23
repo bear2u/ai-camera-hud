@@ -565,4 +565,51 @@ class GlassesSessionTest {
         assertTrue(transport.sent.contains(ClientEvents.truncate("item_9", 800)))
         assertEquals(Status.Thinking, session.hud.status)
     }
+
+    private val fix = GeoFix(LatLng(35.681236, 139.767125), headingDegrees = 47f, address = "東京都千代田区丸の内1丁目")
+
+    private fun locatedSession() =
+        GlassesSession("test-key", transport, mic, frames, sink, location = object : LocationSource {
+            override fun current() = fix
+        })
+
+    @Test
+    fun shouldSendLocationWithSpokenQuestion() {
+        val located = locatedSession()
+        located.start()
+        transport.listener.onOpen()
+        located.tap()
+        mic.emit(byteArrayOf(1))
+
+        located.tap()
+
+        assertEquals(
+            listOf(
+                ClientEvents.imageItem(byteArrayOf(9, 9)),
+                ClientEvents.textItem(fix.describe()),
+                ClientEvents.commit(),
+                ClientEvents.responseCreate(listOf("audio")),
+            ),
+            transport.sent.takeLast(4),
+        )
+    }
+
+    @Test
+    fun shouldSendLocationWithTypedQuestion() {
+        val located = locatedSession()
+        located.start()
+        transport.listener.onOpen()
+
+        located.sendText("이 건물 뭐야?")
+
+        assertEquals(
+            listOf(
+                ClientEvents.imageItem(byteArrayOf(9, 9)),
+                ClientEvents.textItem(fix.describe()),
+                ClientEvents.textItem("이 건물 뭐야?"),
+                ClientEvents.responseCreate(listOf("audio")),
+            ),
+            transport.sent.takeLast(4),
+        )
+    }
 }

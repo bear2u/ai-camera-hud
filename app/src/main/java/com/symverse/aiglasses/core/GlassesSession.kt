@@ -10,6 +10,7 @@ class GlassesSession(
     private val mic: MicSource,
     private val frames: FrameSource,
     private val sink: AudioSink,
+    private val location: LocationSource? = null,
     private val onHudChanged: (HudState) -> Unit = {},
 ) : RealtimeTransport.Listener {
     var hud = HudState()
@@ -198,12 +199,18 @@ class GlassesSession(
     private fun onTypedQuestionFrame(jpeg: ByteArray?) {
         if (hud.status != Status.Thinking) return
         if (jpeg != null) transport.send(ClientEvents.imageItem(jpeg, detail = if (solving) "high" else "low"))
+        if (!solving) sendLocation()
         transport.send(ClientEvents.textItem(typedQuestion))
         playbackMuted = false
         transport.send(
             if (solving) ClientEvents.responseCreate(listOf("text"), SOLVE_INSTRUCTIONS)
             else ClientEvents.responseCreate(listOf("audio")),
         )
+    }
+
+    /** 어디서 어느 쪽을 보고 있는지 알려 주면 AI가 보이는 건물과 장소를 더 정확히 맞힌다. */
+    private fun sendLocation() {
+        location?.current()?.let { transport.send(ClientEvents.textItem(it.describe())) }
     }
 
     private fun finishListening() {
@@ -217,6 +224,7 @@ class GlassesSession(
     private fun onFrame(jpeg: ByteArray?) {
         if (hud.status != Status.Thinking) return
         if (jpeg != null) transport.send(ClientEvents.imageItem(jpeg))
+        sendLocation()
         playbackMuted = false
         transport.send(ClientEvents.commit())
         transport.send(ClientEvents.responseCreate(listOf("audio")))
