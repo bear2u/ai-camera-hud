@@ -5,6 +5,19 @@ enum class Status { Off, Connecting, Idle, Listening, Thinking, Speaking, Error 
 /** 화면 탭이 하는 일. */
 enum class Mode { Ask, TranslateText, Conversation, Solve, Navigate }
 
+/** 채팅창을 보이는 방식. 버튼을 누를 때마다 다음으로 넘어간다. */
+enum class ChatView {
+    /** 배경이 있는 채팅창 전체. */
+    Shown,
+
+    /** 배경 없이 대화 내용만. */
+    Transparent,
+    Hidden,
+    ;
+
+    fun next(): ChatView = entries[(ordinal + 1) % entries.size]
+}
+
 enum class Speaker { User, Assistant, Translation, Caption, Solution }
 
 /** 채팅창의 말풍선 하나. */

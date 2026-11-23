@@ -12,7 +12,7 @@ The AI side runs on the OpenAI Realtime API over a WebSocket, and walking direct
 - **Problem solving.** Point at a problem and ask by voice or text ("solve only number 2", "just a hint"). The answer and the steps appear as text. Sending without speaking solves whatever is visible.
 - **Location-aware answers.** With location access allowed, each question carries your coordinates, a street address, and the direction the camera is facing, so the AI can tell which building or place you are looking at.
 - **Walking navigation.** In navigation mode, type a destination and a card on the HUD shows the next turn, the distance to it, an arrow pointing toward it relative to where the camera faces, and the remaining distance. Each new step is also read aloud.
-- **Chat panel.** Every answer lands in a scrollable chat log on the left, with a mode selector, a text input, and a microphone button. The panel and the whole HUD can each be hidden.
+- **Chat panel.** Every answer lands in a scrollable chat log on the left, with a mode selector, a text input, and a microphone button. The panel can be shown, made transparent so only the messages float over the camera view, or hidden, and the whole HUD can be hidden too.
 - **Photo and video capture.** Buttons on the right save photos and videos to the gallery. Captures contain the camera image only, never the HUD.
 - **Bluetooth earbuds.** When earbuds are connected, the app uses their microphone while it listens to you and releases it afterwards so answers play at normal quality. Interpreting mode always uses the phone's microphone.
 - **Settings.** Enter and save the API keys, pick a Realtime model, and run a connection test before saving.

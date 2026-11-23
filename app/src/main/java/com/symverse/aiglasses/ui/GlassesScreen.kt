@@ -44,7 +44,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -54,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.symverse.aiglasses.core.CaptureState
+import com.symverse.aiglasses.core.ChatView
 import com.symverse.aiglasses.core.HudState
 import com.symverse.aiglasses.core.LogEntry
 import com.symverse.aiglasses.core.Mode
@@ -65,6 +68,7 @@ import com.symverse.aiglasses.core.Status
 private val RecordingFill = Color(0xE6B3261E)
 private val BubbleShape = RoundedCornerShape(12.dp)
 private val OtherBubble = Color(0x33FFFFFF)
+private val TextShadow = Shadow(color = Color.Black, offset = Offset(0f, 1f), blurRadius = 6f)
 
 /**
  * 카메라 화면 전체 위에 HUD를 얹는다. 왼쪽은 채팅창(모드, 대화 기록, 입력), 오른쪽은 버튼들이다.
@@ -88,7 +92,7 @@ fun GlassesScreen(
     onStopNavigation: () -> Unit,
 ) {
     var hudVisible by rememberSaveable { mutableStateOf(true) }
-    var chatVisible by rememberSaveable { mutableStateOf(true) }
+    var chatView by rememberSaveable { mutableStateOf(ChatView.Shown) }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (surfaceRequest != null) {
             CameraXViewfinder(surfaceRequest = surfaceRequest, modifier = Modifier.fillMaxSize())
@@ -101,9 +105,10 @@ fun GlassesScreen(
                 .imePadding()
                 .padding(16.dp),
         ) {
-            if (hudVisible && chatVisible) {
+            if (hudVisible && chatView != ChatView.Hidden) {
                 ChatPanel(
                     hud = hud,
+                    transparent = chatView == ChatView.Transparent,
                     mode = mode,
                     onSelectMode = onSelectMode,
                     onSendText = onSendText,
@@ -132,12 +137,17 @@ fun GlassesScreen(
             }
             Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (hudVisible) {
-                    // 채팅창만 접어서 카메라 화면을 넓게 본다. 화면 탭으로 말하기는 그대로 된다.
+                    // 누를 때마다 채팅창 보임 → 투명(내용만) → 숨김 순으로 바뀐다. 화면 탭으로 말하기는 늘 된다.
                     IconButton(
-                        if (chatVisible) HudIcon.ChatOff else HudIcon.Chat,
-                        if (chatVisible) "채팅창 숨기기" else "채팅창 보기",
-                        onClick = { chatVisible = !chatVisible },
-                        fill = if (chatVisible) CardFill else Primary,
+                        if (chatView == ChatView.Hidden) HudIcon.ChatOff else HudIcon.Chat,
+                        when (chatView) {
+                            ChatView.Shown -> "채팅창 보임"
+                            ChatView.Transparent -> "채팅창 투명"
+                            ChatView.Hidden -> "채팅창 숨김"
+                        },
+                        onClick = { chatView = chatView.next() },
+                        fill = if (chatView == ChatView.Shown) Primary else CardFill,
+                        tint = if (chatView == ChatView.Transparent) InkDim else Ink,
                     )
                     IconButton(HudIcon.EyeOff, "HUD 숨기기", onClick = { hudVisible = false })
                     val aiOn = hud.status != Status.Off
@@ -161,6 +171,7 @@ fun GlassesScreen(
 @Composable
 private fun ChatPanel(
     hud: HudState,
+    transparent: Boolean,
     mode: Mode,
     onSelectMode: (Mode) -> Unit,
     onSendText: (String) -> Unit,
@@ -169,6 +180,17 @@ private fun ChatPanel(
 ) {
     // 가로 화면에서는 키보드가 높이를 많이 차지하므로, 키보드가 뜨면 위쪽 줄들을 접는다.
     val typing = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    if (transparent) {
+        // 배경, 모드 선택, 입력칸 없이 대화 내용만 카메라 화면 위에 띄운다.
+        Column(modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ChatLog(hud.entries, emptyHint = "", transparent = true, modifier = Modifier.weight(1f).fillMaxWidth())
+            hud.error?.let { BasicText("오류: $it", style = TitleStyle.copy(color = Alert, shadow = TextShadow), maxLines = 3) }
+            if (hud.status != Status.Idle && hud.status != Status.Error) {
+                BasicText(statusLabel(hud.status), style = TitleStyle.copy(color = Ink, shadow = TextShadow), maxLines = 1)
+            }
+        }
+        return
+    }
     Column(
         modifier
             .background(CardFill, CardShape)
@@ -198,7 +220,7 @@ private fun ChatPanel(
 
 /** 대화 기록. 맨 아래를 보고 있을 때만 새 글을 따라 내려가서, 위로 올려 읽는 중에는 움직이지 않는다. */
 @Composable
-private fun ChatLog(entries: List<LogEntry>, emptyHint: String, modifier: Modifier = Modifier) {
+private fun ChatLog(entries: List<LogEntry>, emptyHint: String, modifier: Modifier = Modifier, transparent: Boolean = false) {
     val scroll = rememberScrollState()
     var followTail by remember { mutableStateOf(true) }
     LaunchedEffect(scroll) {
@@ -215,14 +237,23 @@ private fun ChatLog(entries: List<LogEntry>, emptyHint: String, modifier: Modifi
     }
     Column(modifier.verticalScroll(scroll), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (entries.isEmpty()) BasicText(emptyHint, style = BodyStyle.copy(color = InkDim))
-        entries.forEach { Bubble(it) }
+        entries.forEach { Bubble(it, transparent) }
     }
 }
 
 @Composable
-private fun Bubble(entry: LogEntry) {
+private fun Bubble(entry: LogEntry, transparent: Boolean) {
     val mine = entry.speaker == Speaker.User
     Column(Modifier.fillMaxWidth(), horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
+        if (transparent) {
+            // 말풍선 없이 글자만. 밝은 장면에서도 읽히도록 그림자를 준다.
+            BasicText(
+                entry.text,
+                style = BodyStyle.copy(shadow = TextShadow, color = if (mine) Color(0xFF9CCBFF) else Ink),
+                modifier = Modifier.padding(start = if (mine) 40.dp else 0.dp, end = if (mine) 0.dp else 16.dp),
+            )
+            return@Column
+        }
         if (!mine) BasicText(speakerLabel(entry.speaker), style = TitleStyle)
         BasicText(
             entry.text,
