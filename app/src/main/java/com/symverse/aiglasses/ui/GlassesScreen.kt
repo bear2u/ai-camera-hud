@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -34,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.symverse.aiglasses.core.HudState
+import com.symverse.aiglasses.core.Mode
 import com.symverse.aiglasses.core.Status
 
 
@@ -46,6 +48,8 @@ fun GlassesScreen(
     onTap: () -> Unit,
     onToggleAi: () -> Unit,
     onOpenSettings: () -> Unit,
+    mode: Mode,
+    onSelectMode: (Mode) -> Unit,
 ) {
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (surfaceRequest != null) {
@@ -61,8 +65,10 @@ fun GlassesScreen(
             Column(Modifier.align(Alignment.TopStart).fillMaxWidth(0.42f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatusCard(hud.status)
                 if (hud.userText.isNotBlank()) TextCard(title = "나", text = hud.userText)
+                if (hud.translationText.isNotBlank()) TextCard(title = "글자 번역", text = hud.translationText)
                 hud.error?.let { TextCard(title = "오류", text = it, line = Alert) }
             }
+            ModeSwitch(mode = mode, onSelect = onSelectMode, modifier = Modifier.align(Alignment.TopCenter))
             if (hud.assistantText.isNotBlank()) {
                 TextCard(
                     title = "AI 어시스턴트",
@@ -74,7 +80,7 @@ fun GlassesScreen(
                 AiToggle(on = hud.status != Status.Off, onClick = onToggleAi)
                 PillButton("설정", onClick = onOpenSettings)
             }
-            HintBar(hud.status, Modifier.align(Alignment.BottomStart))
+            HintBar(hud.status, mode, Modifier.align(Alignment.BottomStart))
         }
     }
 }
@@ -89,6 +95,30 @@ private fun StatusCard(status: Status) {
         Box(Modifier.size(8.dp).background(statusColor(status), CircleShape))
         BasicText("AI Camera", style = BodyStyle.copy(fontWeight = FontWeight.SemiBold))
         BasicText(statusLabel(status), style = TitleStyle)
+    }
+}
+
+/** 화면 탭이 할 일을 고른다. */
+@Composable
+private fun ModeSwitch(mode: Mode, onSelect: (Mode) -> Unit, modifier: Modifier = Modifier) {
+    Row(modifier.background(CardFill, PillShape).border(1.dp, CardLine, PillShape).padding(4.dp)) {
+        ModeOption("질문", selected = mode == Mode.Ask, onClick = { onSelect(Mode.Ask) })
+        ModeOption("글자 번역", selected = mode == Mode.TranslateText, onClick = { onSelect(Mode.TranslateText) })
+    }
+}
+
+@Composable
+private fun ModeOption(label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .clip(PillShape)
+            .background(if (selected) Primary else Color.Transparent, PillShape)
+            .selectable(selected = selected, role = Role.Tab, onClick = onClick)
+            .heightIn(min = 40.dp)
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicText(label, style = BodyStyle.copy(fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal))
     }
 }
 
@@ -130,10 +160,10 @@ private fun TextCard(title: String, text: String, modifier: Modifier = Modifier,
 }
 
 @Composable
-private fun HintBar(status: Status, modifier: Modifier = Modifier) {
+private fun HintBar(status: Status, mode: Mode, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(50)
     BasicText(
-        hint(status),
+        hint(status, mode),
         modifier = modifier.background(CardFill, shape).border(1.dp, CardLine, shape).padding(horizontal = 18.dp, vertical = 10.dp),
         style = BodyStyle,
     )
@@ -155,10 +185,10 @@ private fun statusLabel(status: Status): String = when (status) {
     Status.Error -> "오류"
 }
 
-private fun hint(status: Status): String = when (status) {
+private fun hint(status: Status, mode: Mode): String = when (status) {
     Status.Off -> "AI가 꺼져 있습니다. 위의 AI 활성화를 누르세요"
     Status.Connecting -> "AI에 연결하고 있습니다"
-    Status.Idle -> "화면을 탭하고 질문하세요"
+    Status.Idle -> if (mode == Mode.TranslateText) "글자를 비추고 화면을 탭하세요" else "화면을 탭하고 질문하세요"
     Status.Listening -> "듣고 있습니다. 다 말했으면 탭하세요"
     Status.Thinking -> "답을 준비하고 있습니다"
     Status.Speaking -> "탭하면 답을 멈춥니다"

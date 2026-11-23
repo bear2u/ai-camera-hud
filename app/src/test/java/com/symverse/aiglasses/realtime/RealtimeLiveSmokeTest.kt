@@ -125,4 +125,74 @@ class RealtimeLiveSmokeTest {
         }
         return ByteArrayOutputStream().also { ImageIO.write(image, "jpg", it) }.toByteArray()
     }
+
+    @Test
+    fun shouldTranslateTextInImageAsTextOnlyResponse() {
+        assumeTrue(System.getenv("OPENAI_LIVE") == "1")
+        val key = Properties().apply { File("../local.properties").inputStream().use(::load) }
+            .getProperty("OPENAI_API_KEY").orEmpty()
+        assumeTrue(key.isNotBlank())
+
+        val transport = OkHttpRealtimeTransport(key)
+        val opened = CountDownLatch(1)
+        transport.connect(object : RealtimeTransport.Listener {
+            override fun onOpen() = opened.countDown()
+
+            override fun onMessage(event: String) {
+                messages.put(event)
+            }
+
+            override fun onFailure(message: String) {
+                messages.put("""{"type":"error","error":{"message":"$message"}}""")
+                opened.countDown()
+            }
+        })
+        try {
+            assertTrue("WebSocket 이 열리지 않음", opened.await(15, TimeUnit.SECONDS))
+            transport.send(ClientEvents.sessionUpdate("너는 AI 안경의 음성 비서다."))
+            transport.send(ClientEvents.imageItem(signJpeg("EMERGENCY EXIT")))
+            transport.send(
+                ClientEvents.responseCreate(
+                    listOf("text"),
+                    "방금 받은 사진에 보이는 글자를 읽고 한국어로 번역해라. '원문 → 번역' 형식으로만 답해라.",
+                ),
+            )
+
+            val text = StringBuilder()
+            var audioBytes = 0
+            var done = false
+            val deadline = System.currentTimeMillis() + 60_000
+            while (!done && System.currentTimeMillis() < deadline) {
+                val raw = messages.poll(500, TimeUnit.MILLISECONDS) ?: continue
+                when (val event = ServerEvent.decode(raw)) {
+                    is ServerEvent.TextDelta -> text.append(event.text)
+                    is ServerEvent.AudioDelta -> audioBytes += event.pcm.size
+                    is ServerEvent.Error -> log.appendLine("[번역] 오류: ${event.message}")
+                    is ServerEvent.ResponseDone -> done = true
+                    else -> Unit
+                }
+            }
+            log.appendLine("[번역] 텍스트='$text', 오디오 $audioBytes bytes")
+
+            assertTrue("response.done 을 받지 못함", done)
+            assertTrue("번역 텍스트 없음", text.isNotBlank())
+            assertTrue("텍스트 전용인데 오디오가 옴", audioBytes == 0)
+        } finally {
+            transport.close()
+            File("build/live-translate.txt").apply { parentFile?.mkdirs() }.writeText(log.toString())
+        }
+    }
+
+    private fun signJpeg(text: String): ByteArray {
+        val image = BufferedImage(640, 240, BufferedImage.TYPE_INT_RGB)
+        image.createGraphics().apply {
+            color = Color(0, 110, 60)
+            fillRect(0, 0, 640, 240)
+            color = Color.WHITE
+            font = java.awt.Font("SansSerif", java.awt.Font.BOLD, 56)
+            drawString(text, 40, 140)
+            dispose()
+        }
+        return ByteArrayOutputStream().also { ImageIO.write(image, "jpg", it) }.toByteArray()
+    }
 }

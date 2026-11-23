@@ -20,6 +20,7 @@ import com.symverse.aiglasses.camera.CameraFrameSource
 import com.symverse.aiglasses.core.AppSettings
 import com.symverse.aiglasses.core.GlassesSession
 import com.symverse.aiglasses.core.HudState
+import com.symverse.aiglasses.core.Mode
 import com.symverse.aiglasses.core.SettingsRepository
 import com.symverse.aiglasses.core.Status
 import com.symverse.aiglasses.realtime.OkHttpRealtimeTransport
@@ -30,6 +31,7 @@ class MainActivity : ComponentActivity() {
     private var hud by mutableStateOf(HudState())
     private var settings by mutableStateOf(AppSettings())
     private var showSettings by mutableStateOf(false)
+    private var mode by mutableStateOf(Mode.Ask)
 
     private lateinit var camera: CameraFrameSource
     private lateinit var settingsRepository: SettingsRepository
@@ -59,6 +61,8 @@ class MainActivity : ComponentActivity() {
                 onTap = ::onTap,
                 onToggleAi = ::onToggleAi,
                 onOpenSettings = ::openSettings,
+                mode = mode,
+                onSelectMode = ::selectMode,
             )
             if (showSettings) {
                 BackHandler(onBack = ::closeSettings)
@@ -78,6 +82,11 @@ class MainActivity : ComponentActivity() {
     private fun onToggleAi() {
         val current = session ?: return permissionRequest.launch(PERMISSIONS)
         if (current.hud.status == Status.Off) current.start() else current.stop()
+    }
+
+    private fun selectMode(selected: Mode) {
+        mode = selected
+        session?.mode = selected
     }
 
     private fun openSettings() {
@@ -105,7 +114,10 @@ class MainActivity : ComponentActivity() {
         session?.stop()
         val current = settings
         val newTransport = OkHttpRealtimeTransport(current.apiKey, current.realtimeUrl).also { transport = it }
-        session = GlassesSession(current.apiKey, newTransport, mic, camera, player) { hud = it }.also { it.start() }
+        session = GlassesSession(current.apiKey, newTransport, mic, camera, player) { hud = it }.also {
+            it.mode = mode
+            it.start()
+        }
     }
 
     private fun showPermissionNeeded() {
