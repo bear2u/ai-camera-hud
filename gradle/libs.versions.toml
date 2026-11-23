@@ -5,6 +5,7 @@ composeBom = "2026.11.01"
 activityCompose = "1.13.0"
 junit = "4.13.2"
 serialization = "1.13.0"
+okhttp = "5.5.1"
 
 [libraries]
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -12,6 +13,7 @@ androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]

@@ -10,7 +10,10 @@ import kotlinx.serialization.json.add
 
 /** Realtime API(GA)로 보내는 클라이언트 이벤트 JSON을 만든다. */
 object ClientEvents {
-    private const val SAMPLE_RATE = 24000
+    private val PCM_24K = buildJsonObject {
+        put("type", "audio/pcm")
+        put("rate", 24000)
+    }
 
     fun sessionUpdate(instructions: String): String = buildJsonObject {
         put("type", "session.update")
@@ -20,10 +23,7 @@ object ClientEvents {
             putJsonArray("output_modalities") { add("audio") }
             putJsonObject("audio") {
                 putJsonObject("input") {
-                    putJsonObject("format") {
-                        put("type", "audio/pcm")
-                        put("rate", SAMPLE_RATE)
-                    }
+                    put("format", PCM_24K)
                     put("turn_detection", JsonNull)
                     putJsonObject("transcription") {
                         put("model", "gpt-4o-mini-transcribe")
@@ -31,10 +31,7 @@ object ClientEvents {
                     }
                 }
                 putJsonObject("output") {
-                    putJsonObject("format") {
-                        put("type", "audio/pcm")
-                        put("rate", SAMPLE_RATE)
-                    }
+                    put("format", PCM_24K)
                     put("voice", "marin")
                 }
             }
