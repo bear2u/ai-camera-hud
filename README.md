@@ -80,3 +80,7 @@ These tests use your API quota.
 - A Realtime session lasts at most 60 minutes; the app does not reconnect on its own yet.
 - The interface text is Korean, and translation targets Korean.
 - Object labels anchored in the camera view are not implemented.
+
+## License
+
+Released under the [MIT License](LICENSE).
