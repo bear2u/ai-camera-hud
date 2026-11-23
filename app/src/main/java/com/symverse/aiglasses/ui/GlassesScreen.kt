@@ -4,6 +4,7 @@ import androidx.camera.compose.CameraXViewfinder
 import androidx.camera.core.SurfaceRequest
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
@@ -46,7 +49,7 @@ private val BodyStyle = TextStyle(color = Ink, fontSize = 16.sp, lineHeight = 22
 
 /** 카메라 화면 전체 위에 AI 오버레이를 얹는다. 화면 어디든 탭하면 [onTap]. */
 @Composable
-fun GlassesScreen(hud: HudState, surfaceRequest: SurfaceRequest?, onTap: () -> Unit) {
+fun GlassesScreen(hud: HudState, surfaceRequest: SurfaceRequest?, onTap: () -> Unit, onToggleAi: () -> Unit) {
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (surfaceRequest != null) {
             CameraXViewfinder(surfaceRequest = surfaceRequest, modifier = Modifier.fillMaxSize())
@@ -70,6 +73,7 @@ fun GlassesScreen(hud: HudState, surfaceRequest: SurfaceRequest?, onTap: () -> U
                     modifier = Modifier.align(Alignment.BottomEnd).fillMaxWidth(0.46f),
                 )
             }
+            AiToggle(on = hud.status != Status.Off, onClick = onToggleAi, modifier = Modifier.align(Alignment.TopEnd))
             HintBar(hud.status, Modifier.align(Alignment.BottomStart))
         }
     }
@@ -82,9 +86,29 @@ private fun StatusCard(status: Status) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Box(Modifier.size(8.dp).background(if (status == Status.Error) Alert else Live, CircleShape))
+        Box(Modifier.size(8.dp).background(statusColor(status), CircleShape))
         BasicText("AI Camera", style = BodyStyle.copy(fontWeight = FontWeight.SemiBold))
         BasicText(statusLabel(status), style = TitleStyle)
+    }
+}
+
+/** AI 연결을 켜고 끄는 버튼. */
+@Composable
+private fun AiToggle(on: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(50)
+    Row(
+        modifier
+            .clip(shape)
+            .background(if (on) CardFill else Color(0xE61F6FEB), shape)
+            .border(1.dp, CardLine, shape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .heightIn(min = 48.dp)
+            .padding(horizontal = 18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(Modifier.size(10.dp).background(if (on) Alert else Ink, if (on) RoundedCornerShape(2.dp) else CircleShape))
+        BasicText(if (on) "AI 중지" else "AI 활성화", style = BodyStyle.copy(fontWeight = FontWeight.SemiBold))
     }
 }
 
@@ -116,7 +140,14 @@ private fun HintBar(status: Status, modifier: Modifier = Modifier) {
     )
 }
 
+private fun statusColor(status: Status): Color = when (status) {
+    Status.Off -> InkDim
+    Status.Error -> Alert
+    else -> Live
+}
+
 private fun statusLabel(status: Status): String = when (status) {
+    Status.Off -> "꺼짐"
     Status.Connecting -> "연결 중"
     Status.Idle -> "대기"
     Status.Listening -> "듣는 중"
@@ -126,6 +157,7 @@ private fun statusLabel(status: Status): String = when (status) {
 }
 
 private fun hint(status: Status): String = when (status) {
+    Status.Off -> "AI가 꺼져 있습니다. 위의 AI 활성화를 누르세요"
     Status.Connecting -> "AI에 연결하고 있습니다"
     Status.Idle -> "화면을 탭하고 질문하세요"
     Status.Listening -> "듣고 있습니다. 다 말했으면 탭하세요"

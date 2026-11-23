@@ -42,7 +42,12 @@ class MainActivity : ComponentActivity() {
         WindowCompat.getInsetsController(window, window.decorView).hide(WindowInsetsCompat.Type.systemBars())
         camera = CameraFrameSource(applicationContext)
         setContent {
-            GlassesScreen(hud = hud, surfaceRequest = camera.surfaceRequest.value, onTap = ::onTap)
+            GlassesScreen(
+                hud = hud,
+                surfaceRequest = camera.surfaceRequest.value,
+                onTap = ::onTap,
+                onToggleAi = ::onToggleAi,
+            )
         }
         if (PERMISSIONS.all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }) {
             startGlasses()
@@ -53,6 +58,11 @@ class MainActivity : ComponentActivity() {
 
     private fun onTap() {
         session?.tap() ?: permissionRequest.launch(PERMISSIONS)
+    }
+
+    private fun onToggleAi() {
+        val current = session ?: return permissionRequest.launch(PERMISSIONS)
+        if (current.hud.status == Status.Off) current.start() else current.stop()
     }
 
     private fun startGlasses() {

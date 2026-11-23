@@ -1,6 +1,6 @@
 package com.symverse.aiglasses.core
 
-enum class Status { Connecting, Idle, Listening, Thinking, Speaking, Error }
+enum class Status { Off, Connecting, Idle, Listening, Thinking, Speaking, Error }
 
 /** HUD에 그릴 내용. */
 data class HudState(

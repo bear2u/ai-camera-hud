@@ -219,4 +219,55 @@ class GlassesSessionTest {
 
         assertEquals(HudState(status = Status.Listening), session.hud)
     }
+
+    @Test
+    fun shouldCloseConnectionAndTurnOffWhenStopped() {
+        connect()
+        session.tap()
+        val closesBefore = transport.closeCount
+
+        session.stop()
+
+        assertEquals(HudState(status = Status.Off), session.hud)
+        assertEquals(closesBefore + 1, transport.closeCount)
+        assertFalse(mic.running)
+    }
+
+    @Test
+    fun shouldIgnoreTapAndLateServerEventsWhileOff() {
+        ask()
+        session.stop()
+
+        session.tap()
+        receive("""{"type":"response.output_audio.delta","item_id":"item_9","delta":"AQID"}""")
+        receive("""{"type":"response.output_audio_transcript.delta","delta":"컵"}""")
+        receive("""{"type":"response.done"}""")
+
+        assertEquals(HudState(status = Status.Off), session.hud)
+        assertFalse(mic.running)
+        assertTrue(sink.played.isEmpty())
+    }
+
+    @Test
+    fun shouldReconnectWhenStartedAfterStop() {
+        connect()
+        session.stop()
+
+        session.start()
+        transport.listener.onOpen()
+
+        assertEquals(2, transport.connectCount)
+        assertEquals(Status.Idle, session.hud.status)
+    }
+
+    @Test
+    fun shouldStayOffWhenConnectionReportsFailureAfterStop() {
+        connect()
+        session.stop()
+
+        transport.listener.onFailure("연결이 닫혔습니다 (1000)")
+        transport.listener.onOpen()
+
+        assertEquals(HudState(status = Status.Off), session.hud)
+    }
 }

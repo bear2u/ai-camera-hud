@@ -73,7 +73,7 @@ class RealtimeLiveSmokeTest {
             // 입력 전사는 프로젝트에 전사 모델 권한이 있어야 온다. 없으면 로그에만 남긴다.
         } finally {
             transport.close()
-            File("build/live-smoke.txt").apply { parentFile.mkdirs() }.writeText(log.toString())
+            File("build/live-smoke.txt").apply { parentFile?.mkdirs() }.writeText(log.toString())
         }
     }
 

@@ -34,6 +34,16 @@ class GlassesSession(
         transport.connect(this)
     }
 
+    /** AI를 끈다. 다시 켜려면 [start]. */
+    @Synchronized
+    fun stop() {
+        mic.stop()
+        sink.stop()
+        transport.close()
+        playingItemId = null
+        hud = HudState(status = Status.Off)
+    }
+
     @Synchronized
     fun tap() {
         when (hud.status) {
@@ -87,12 +97,14 @@ class GlassesSession(
 
     @Synchronized
     override fun onOpen() {
+        if (hud.status == Status.Off) return
         transport.send(ClientEvents.sessionUpdate(INSTRUCTIONS))
         hud = hud.copy(status = Status.Idle)
     }
 
     @Synchronized
     override fun onMessage(event: String) {
+        if (hud.status == Status.Off) return
         when (val received = ServerEvent.decode(event)) {
             is ServerEvent.AudioTranscriptDelta ->
                 hud = hud.copy(assistantText = hud.assistantText + received.text)
@@ -110,6 +122,7 @@ class GlassesSession(
 
     @Synchronized
     override fun onFailure(message: String) {
+        if (hud.status == Status.Off) return
         mic.stop()
         sink.stop()
         hud = hud.copy(status = Status.Error, error = message)

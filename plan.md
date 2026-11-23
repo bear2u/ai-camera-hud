@@ -109,6 +109,7 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [x] `GlassesScreen` 가로 화면 카드형 오버레이(상태·내 말·AI 답·오류), 권한 요청과 거부 안내
 - [x] 실서버 스모크 테스트(`OPENAI_LIVE=1`)로 session.update, 이미지 입력, 음성 입출력 이벤트 형태 확인
 - [x] 실기기(SM-S938N, Android 17)에서 탭 → 듣기 → 탭 → 카메라 장면에 대한 AI 답 표시 확인
+- [x] AI 활성화/중지 버튼(화면 오른쪽 위): shouldCloseConnectionAndTurnOffWhenStopped, shouldIgnoreTapAndLateServerEventsWhileOff, shouldReconnectWhenStartedAfterStop, shouldStayOffWhenConnectionReportsFailureAfterStop. 실기기에서 버튼으로 끄고 다시 켜지는 것 확인
 - [ ] 실기기에서 사람이 직접 말로 질문하고 스피커로 답을 듣는 확인 (사용자)
 - [ ] 입력 음성 전사: 이 OpenAI 프로젝트는 `gpt-4o-mini-transcribe`, `gpt-4o-transcribe`, `whisper-1`, `gpt-realtime-whisper` 모두 접근 권한이 없어 "나" 자막이 나오지 않는다. 프로젝트에서 전사 모델을 허용하면 코드 변경 없이 나온다
 

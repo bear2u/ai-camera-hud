@@ -14,7 +14,11 @@ class FakeTransport : RealtimeTransport {
         sent += event
     }
 
-    override fun close() = Unit
+    var closeCount = 0
+
+    override fun close() {
+        closeCount++
+    }
 }
 
 class FakeMic : MicSource {
