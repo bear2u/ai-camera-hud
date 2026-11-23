@@ -29,6 +29,9 @@ class GlassesSession(
     /** 사진으로 요청한 일이 문제 풀이면 true, 글자 번역이면 false. */
     private var solving = false
 
+    /** 이번 듣기에서 서버로 보낸 소리가 있으면 true. */
+    private var audioSent = false
+
     private var playingItemId: String? = null
 
     /** 끊은 응답의 늦게 도착한 음성을 버린다. */
@@ -61,13 +64,23 @@ class GlassesSession(
         when (hud.status) {
             Status.Idle -> if (!stopPlayback()) {
                 when (mode) {
-                    Mode.Ask -> startListening()
-                    Mode.TranslateText -> startPhotoTask(solve = false)
-                    Mode.Solve -> startPhotoTask(solve = true)
+                    Mode.Ask -> {
+                        solving = false
+                        startListening()
+                    }
+                    Mode.TranslateText -> startTextTranslation()
+                    Mode.Solve -> {
+                        solving = true
+                        startListening()
+                    }
                     Mode.Conversation -> startConversation()
                 }
             }
-            Status.Listening -> if (conversing) stopConversation() else finishListening()
+            Status.Listening -> when {
+                conversing -> stopConversation()
+                solving -> finishSolveListening()
+                else -> finishListening()
+            }
             Status.Speaking -> interrupt()
             Status.Error -> start()
             else -> Unit
@@ -75,13 +88,17 @@ class GlassesSession(
     }
 
     private fun startListening() {
+        audioSent = false
         hud = HudState(status = Status.Listening)
         mic.start(::onMicChunk)
     }
 
     @Synchronized
     private fun onMicChunk(pcm: ByteArray) {
-        if (hud.status == Status.Listening) transport.send(ClientEvents.audioAppend(pcm))
+        if (hud.status == Status.Listening) {
+            audioSent = true
+            transport.send(ClientEvents.audioAppend(pcm))
+        }
     }
 
     private fun interrupt() {
@@ -122,23 +139,42 @@ class GlassesSession(
         captionOpen = true
     }
 
-    /** 사진 한 장만 보내 글자로 답을 받는다: 글자 번역 또는 문제 풀이. */
-    private fun startPhotoTask(solve: Boolean) {
-        solving = solve
-        hud = HudState(status = Status.Thinking)
-        frames.capture(::onPhotoTaskFrame)
+    private fun finishSolveListening() {
+        mic.stop()
+        hud = hud.copy(status = Status.Thinking)
+        frames.capture(::onSolveFrame)
     }
 
     @Synchronized
-    private fun onPhotoTaskFrame(jpeg: ByteArray?) {
+    private fun onSolveFrame(jpeg: ByteArray?) {
+        if (hud.status != Status.Thinking) return
+        if (jpeg == null) {
+            transport.send(ClientEvents.clearInputAudio())
+            hud = hud.copy(status = Status.Idle, error = "카메라 장면을 가져오지 못했습니다.")
+            return
+        }
+        transport.send(ClientEvents.imageItem(jpeg, detail = "high"))
+        // 녹음된 소리가 없을 때 commit 하면 서버가 오류를 낸다.
+        if (audioSent) transport.send(ClientEvents.commit())
+        transport.send(ClientEvents.responseCreate(listOf("text"), SOLVE_INSTRUCTIONS))
+    }
+
+    /** 사진 한 장만 보내 번역을 글자로 받는다. */
+    private fun startTextTranslation() {
+        solving = false
+        hud = HudState(status = Status.Thinking)
+        frames.capture(::onTranslationFrame)
+    }
+
+    @Synchronized
+    private fun onTranslationFrame(jpeg: ByteArray?) {
         if (hud.status != Status.Thinking) return
         if (jpeg == null) {
             hud = hud.copy(status = Status.Idle, error = "카메라 장면을 가져오지 못했습니다.")
             return
         }
         transport.send(ClientEvents.imageItem(jpeg, detail = "high"))
-        val instructions = if (solving) SOLVE_INSTRUCTIONS else TRANSLATE_INSTRUCTIONS
-        transport.send(ClientEvents.responseCreate(listOf("text"), instructions))
+        transport.send(ClientEvents.responseCreate(listOf("text"), TRANSLATE_INSTRUCTIONS))
     }
 
     private fun finishListening() {
@@ -212,7 +248,9 @@ class GlassesSession(
         const val MAX_CAPTIONS = 3
         const val MISSING_KEY = "API 키가 없습니다. 오른쪽 위 설정에서 입력하세요."
         const val SOLVE_INSTRUCTIONS =
-            "방금 받은 사진에 있는 문제를 풀어라. 먼저 '답: ...'을 한 줄로 쓰고, 이어서 '풀이:' 아래에 핵심 단계를 " +
+            "방금 받은 사진에 있는 문제를 풀어라. 사용자가 방금 말로 요청한 것이 있으면 그 요청대로 답하고" +
+                "(예: 특정 번호만, 힌트만, 개념 설명, 앞선 풀이에 대한 질문), 말이 없거나 알아들을 수 없으면 보이는 문제를 풀어라. " +
+                "문제를 풀 때는 먼저 '답: ...'을 한 줄로 쓰고, 이어서 '풀이:' 아래에 핵심 단계를 " +
                 "번호를 붙여 짧게 써라. 한국어로 쓰고, 수식은 LaTeX나 마크다운 없이 일반 문자(예: x^2, √, ×, ÷)로 써라. " +
                 "문제가 여러 개면 번호별로 답하고, 문제가 보이지 않거나 글씨를 읽을 수 없으면 그렇게만 말해라."
         const val TRANSLATE_INSTRUCTIONS =

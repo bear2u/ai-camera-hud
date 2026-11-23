@@ -328,4 +328,72 @@ class RealtimeLiveSmokeTest {
         }
         assertTrue("답 6 이 없음: $text", text.contains("6"))
     }
+
+    /** 문제 사진 + 말로 한 요청("두 번째 문제만")을 함께 보내 글자 답을 받는지 본다. */
+    @Test
+    fun shouldSolveOnlyTheProblemAskedForBySpeech() {
+        assumeTrue(System.getenv("OPENAI_LIVE") == "1")
+        val key = Properties().apply { File("../local.properties").inputStream().use(::load) }
+            .getProperty("OPENAI_API_KEY").orEmpty()
+        assumeTrue(key.isNotBlank())
+
+        // 1) 말로 하는 요청을 음성으로 만든다.
+        val speech = ByteArrayOutputStream()
+        val speaker = OkHttpRealtimeTransport(key)
+        val speakerOpened = CountDownLatch(1)
+        speaker.connect(listenerInto(messages, speakerOpened))
+        assertTrue(speakerOpened.await(15, TimeUnit.SECONDS))
+        speaker.send(ClientEvents.sessionUpdate("시키는 문장만 그대로 말해라."))
+        speaker.send(ClientEvents.responseCreate(listOf("audio"), "다음 문장만 한국어로 그대로 말해라: 두 번째 문제만 풀어줘."))
+        var done = false
+        var deadline = System.currentTimeMillis() + 60_000
+        while (!done && System.currentTimeMillis() < deadline) {
+            val raw = messages.poll(500, TimeUnit.MILLISECONDS) ?: continue
+            when (val event = ServerEvent.decode(raw)) {
+                is ServerEvent.AudioDelta -> speech.write(event.pcm)
+                is ServerEvent.ResponseDone -> done = true
+                else -> Unit
+            }
+        }
+        speaker.close()
+        assertTrue("요청 음성을 만들지 못함", speech.size() > 0)
+
+        // 2) 앱과 같은 순서로 보낸다: 음성 → 고화질 사진 → commit → 글자 응답 요청.
+        val events = LinkedBlockingQueue<String>()
+        val transport = OkHttpRealtimeTransport(key)
+        val opened = CountDownLatch(1)
+        transport.connect(listenerInto(events, opened))
+        val text = StringBuilder()
+        try {
+            assertTrue(opened.await(15, TimeUnit.SECONDS))
+            transport.send(ClientEvents.sessionUpdate("너는 AI 안경의 음성 비서다."))
+            speech.toByteArray().asList().chunked(4800).forEach { transport.send(ClientEvents.audioAppend(it.toByteArray())) }
+            transport.send(ClientEvents.imageItem(signJpeg("1) 2+3=?   2) 9x7=?"), detail = "high"))
+            transport.send(ClientEvents.commit())
+            transport.send(
+                ClientEvents.responseCreate(
+                    listOf("text"),
+                    "방금 받은 사진에 있는 문제를 풀어라. 사용자가 방금 말로 요청한 것이 있으면 그 요청대로 답하고, " +
+                        "말이 없으면 보이는 문제를 풀어라. 먼저 '답: ...'을 한 줄로 써라.",
+                ),
+            )
+            done = false
+            deadline = System.currentTimeMillis() + 90_000
+            while (!done && System.currentTimeMillis() < deadline) {
+                val raw = events.poll(500, TimeUnit.MILLISECONDS) ?: continue
+                when (val event = ServerEvent.decode(raw)) {
+                    is ServerEvent.TextDelta -> text.append(event.text)
+                    is ServerEvent.Error -> log.appendLine("[말로 풀이] 오류: ${event.message}")
+                    is ServerEvent.ResponseDone -> done = true
+                    else -> Unit
+                }
+            }
+            assertTrue("response.done 을 받지 못함", done)
+        } finally {
+            transport.close()
+            log.appendLine("[말로 풀이] $text")
+            File("build/live-solve-spoken.txt").apply { parentFile?.mkdirs() }.writeText(log.toString())
+        }
+        assertTrue("두 번째 문제의 답 63 이 없음: $text", text.contains("63"))
+    }
 }

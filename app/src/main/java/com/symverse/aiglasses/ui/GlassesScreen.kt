@@ -268,10 +268,13 @@ private fun hint(status: Status, mode: Mode): String = when (status) {
         Mode.Ask -> "화면을 탭하고 질문하세요"
         Mode.TranslateText -> "글자를 비추고 화면을 탭하세요"
         Mode.Conversation -> "탭하면 상대의 말을 한국어로 번역합니다"
-        Mode.Solve -> "문제를 화면에 크게 비추고 탭하세요"
+        Mode.Solve -> "문제를 크게 비추고 탭한 뒤 말로 물어보세요"
     }
-    Status.Listening ->
-        if (mode == Mode.Conversation) "번역하고 있습니다. 탭하면 멈춥니다" else "듣고 있습니다. 다 말했으면 탭하세요"
+    Status.Listening -> when (mode) {
+        Mode.Conversation -> "번역하고 있습니다. 탭하면 멈춥니다"
+        Mode.Solve -> "듣고 있습니다. 탭하면 풉니다 (말없이 탭해도 됩니다)"
+        else -> "듣고 있습니다. 다 말했으면 탭하세요"
+    }
     Status.Thinking -> "답을 준비하고 있습니다"
     Status.Speaking -> "탭하면 답을 멈춥니다"
     Status.Error -> "탭하면 다시 시도합니다"

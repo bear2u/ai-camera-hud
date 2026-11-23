@@ -155,6 +155,8 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [x] shouldSendHighDetailFrameWithSolveInstructionAndTextOnlyResponse, shouldShowSolutionTextOnHud (`GlassesSessionTest`)
 - [x] "문제 풀이" 모드와 풀이 카드(오른쪽 아래, 손으로 올려 볼 수 있음). 모드 전환은 상태 표시 아래 줄로 옮김
 - [x] 실서버 스모크 테스트: "3x + 7 = 25" 사진 → "답: 6"과 풀이
+- [x] 말로 묻기: 문제 풀이 모드에서 탭 → 말하기 → 탭 하면 사진과 음성을 함께 보낸다. 말없이 다시 탭하면 보이는 문제를 푼다. shouldListenForSpokenRequestWhenSolveModeTapped, shouldSendHighDetailFrameSpokenRequestAndSolveInstructionOnSecondTap, shouldSolveWithoutCommitWhenNothingWasRecorded
+- [x] 실서버 스모크 테스트: 문제 두 개 사진 + 음성 "두 번째 문제만 풀어줘" → "답: 63"
 - [ ] 실기기 확인 (사용자): 교재의 실제 문제를 비췄을 때 읽기와 풀이 정확도. 사진 한 장으로 풀기 때문에 어려운 문제는 틀릴 수 있다
 
 ### 이후 단계 (이번 범위 밖)

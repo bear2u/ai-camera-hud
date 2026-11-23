@@ -407,19 +407,15 @@ class GlassesSessionTest {
     }
 
     @Test
-    fun shouldSendHighDetailFrameWithSolveInstructionAndTextOnlyResponse() {
+    fun shouldListenForSpokenRequestWhenSolveModeTapped() {
         connect()
         session.mode = Mode.Solve
 
         session.tap()
 
-        assertEquals(Status.Thinking, session.hud.status)
-        assertFalse(mic.running)
-        assertEquals(listOf("session.update", "conversation.item.create", "response.create"), sentTypes())
-        assertEquals(ClientEvents.imageItem(byteArrayOf(9, 9), detail = "high"), transport.sent[1])
-        val response = Json.parseToJsonElement(transport.sent.last()).jsonObject.getValue("response").jsonObject
-        assertEquals(listOf("text"), response.getValue("output_modalities").jsonArray.map { it.jsonPrimitive.content })
-        assertTrue(response.getValue("instructions").jsonPrimitive.content.contains("문제를 풀"))
+        assertEquals(HudState(status = Status.Listening), session.hud)
+        assertTrue(mic.running)
+        assertEquals(listOf("session.update"), sentTypes())
     }
 
     @Test
@@ -427,11 +423,52 @@ class GlassesSessionTest {
         connect()
         session.mode = Mode.Solve
         session.tap()
+        mic.emit(byteArrayOf(1))
+        session.tap()
 
         receive("""{"type":"response.output_text.delta","delta":"답: x = 4\n"}""")
         receive("""{"type":"response.output_text.delta","delta":"풀이: 1) 2x = 8"}""")
         receive("""{"type":"response.done"}""")
 
         assertEquals(HudState(status = Status.Idle, solutionText = "답: x = 4\n풀이: 1) 2x = 8"), session.hud)
+    }
+
+    @Test
+    fun shouldSendHighDetailFrameSpokenRequestAndSolveInstructionOnSecondTap() {
+        connect()
+        session.mode = Mode.Solve
+        session.tap()
+        mic.emit(byteArrayOf(1))
+
+        session.tap()
+
+        assertFalse(mic.running)
+        assertEquals(Status.Thinking, session.hud.status)
+        assertEquals(
+            listOf(
+                "session.update",
+                "input_audio_buffer.append",
+                "conversation.item.create",
+                "input_audio_buffer.commit",
+                "response.create",
+            ),
+            sentTypes(),
+        )
+        assertEquals(ClientEvents.imageItem(byteArrayOf(9, 9), detail = "high"), transport.sent[2])
+        val response = Json.parseToJsonElement(transport.sent.last()).jsonObject.getValue("response").jsonObject
+        assertEquals(listOf("text"), response.getValue("output_modalities").jsonArray.map { it.jsonPrimitive.content })
+        assertTrue(response.getValue("instructions").jsonPrimitive.content.contains("문제를 풀"))
+    }
+
+    @Test
+    fun shouldSolveWithoutCommitWhenNothingWasRecorded() {
+        connect()
+        session.mode = Mode.Solve
+        session.tap()
+
+        session.tap()
+
+        assertEquals(listOf("session.update", "conversation.item.create", "response.create"), sentTypes())
+        assertEquals(Status.Thinking, session.hud.status)
     }
 }
