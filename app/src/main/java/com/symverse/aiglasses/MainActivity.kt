@@ -79,6 +79,7 @@ class MainActivity : ComponentActivity() {
                 capture = capture,
                 onTakePhoto = { captureActions.takePhoto() },
                 onToggleVideo = { captureActions.toggleVideo() },
+                onSendText = { text -> session?.sendText(text) },
             )
             if (showSettings) {
                 BackHandler(onBack = ::closeSettings)
