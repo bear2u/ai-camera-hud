@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import com.symverse.aiglasses.audio.BluetoothMicRoute
 import com.symverse.aiglasses.audio.MicRecorder
 import com.symverse.aiglasses.audio.PcmPlayer
 import com.symverse.aiglasses.camera.CameraFrameSource
@@ -39,7 +40,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var camera: CameraFrameSource
     private lateinit var captureActions: CaptureActions
     private lateinit var settingsRepository: SettingsRepository
-    private val mic = MicRecorder()
+    private val mic by lazy { MicRecorder(BluetoothMicRoute(applicationContext)) }
     private val player by lazy { PcmPlayer() }
     private var transport: OkHttpRealtimeTransport? = null
     private var session: GlassesSession? = null

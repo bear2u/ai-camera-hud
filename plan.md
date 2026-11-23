@@ -131,6 +131,10 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [ ] HUD를 숨긴 상태에서 촬영 버튼이 남는지 실기기 확인 (사용자가 폰을 쓰는 중이라 못 함)
 - [ ] 동영상 녹화 중 AI에게 말로 질문했을 때 두 마이크가 함께 도는지 확인 (사용자)
 
+### 블루투스 이어폰 (2026-11-23 추가)
+- [x] 듣는 동안만 블루투스 이어폰 마이크로 전환하고, 다 들으면 풀어서 AI 음성은 원래 음질로 재생. `HeadsetMicTest` 3개: shouldUseClassicBluetoothHeadsetWhenConnected, shouldReturnNullWhenNoBluetoothHeadsetIsConnected, shouldPreferLeAudioHeadsetOverClassicBluetooth
+- [ ] 실기기에서 블루투스 이어폰으로 확인 (사용자): 이어폰 마이크로 녹음되는지(logcat 태그 `AIGlassesMic`), 말 첫머리가 잘리지 않는지, 답의 첫머리가 이어폰으로 제대로 나오는지
+
 ### 6단계: 대화 번역 자막
 - [ ] 번역 엔드포인트가 한국어(`ko`)를 받는지 실제 연결로 확인. 안 되면 이 단계 테스트를 일반 세션 방식으로 바꾼다
 - [ ] shouldEncodeTranslationSessionUpdateWithTargetLanguage (`TranslationEventsTest`)

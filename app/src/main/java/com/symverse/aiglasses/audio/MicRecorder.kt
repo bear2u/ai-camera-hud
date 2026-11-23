@@ -7,8 +7,11 @@ import android.media.MediaRecorder
 import com.symverse.aiglasses.core.MicSource
 import kotlin.concurrent.thread
 
-/** 기기 마이크를 24kHz 16-bit mono PCM으로 읽는다. 24kHz가 안 되는 기기는 48kHz를 절반으로 줄인다. */
-class MicRecorder : MicSource {
+/**
+ * 마이크를 24kHz 16-bit mono PCM으로 읽는다. 블루투스 이어폰이 연결돼 있으면 그 마이크를 쓴다.
+ * 24kHz가 안 되는 기기는 48kHz를 절반으로 줄인다.
+ */
+class MicRecorder(private val bluetooth: BluetoothMicRoute? = null) : MicSource {
     @Volatile
     private var active: AudioRecord? = null
 
@@ -18,8 +21,14 @@ class MicRecorder : MicSource {
         val halve = !supports(TARGET_RATE)
         val rate = if (halve) TARGET_RATE * 2 else TARGET_RATE
         val chunkBytes = rate * 2 / 10
+        // 블루투스 이어폰 마이크는 통화용 입력으로 열어야 잡힌다.
+        val source = if (bluetooth?.enable() == true) {
+            MediaRecorder.AudioSource.VOICE_COMMUNICATION
+        } else {
+            MediaRecorder.AudioSource.VOICE_RECOGNITION
+        }
         val record = AudioRecord(
-            MediaRecorder.AudioSource.VOICE_RECOGNITION,
+            source,
             rate,
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT,
@@ -27,6 +36,7 @@ class MicRecorder : MicSource {
         )
         if (record.state != AudioRecord.STATE_INITIALIZED) {
             record.release()
+            bluetooth?.disable()
             return
         }
         active = record
@@ -49,6 +59,7 @@ class MicRecorder : MicSource {
         val record = active ?: return
         active = null
         runCatching { record.stop() }
+        bluetooth?.disable()
     }
 
     private fun supports(rate: Int): Boolean =
