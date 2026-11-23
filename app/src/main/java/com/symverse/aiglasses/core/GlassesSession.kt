@@ -129,7 +129,7 @@ class GlassesSession(
     }
 
     private companion object {
-        const val MISSING_KEY = "API 키가 없습니다. local.properties 의 OPENAI_API_KEY 를 채우세요."
+        const val MISSING_KEY = "API 키가 없습니다. 오른쪽 위 설정에서 입력하세요."
         const val INSTRUCTIONS =
             "너는 AI 안경에 들어 있는 음성 비서다. 사용자의 질문과 함께 사용자가 지금 보고 있는 장면의 사진이 온다. " +
                 "사진을 근거로 한국어로 한두 문장으로 짧고 자연스럽게 답해라. 사진과 무관한 질문에는 그냥 답해라."

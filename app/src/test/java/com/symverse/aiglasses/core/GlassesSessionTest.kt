@@ -165,7 +165,7 @@ class GlassesSessionTest {
         keyless.start()
 
         assertEquals(Status.Error, keyless.hud.status)
-        assertEquals("API 키가 없습니다. local.properties 의 OPENAI_API_KEY 를 채우세요.", keyless.hud.error)
+        assertEquals("API 키가 없습니다. 오른쪽 위 설정에서 입력하세요.", keyless.hud.error)
         assertEquals(0, transport.connectCount)
     }
 
