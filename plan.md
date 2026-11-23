@@ -126,6 +126,7 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [x] 화면 오른쪽 사진·동영상 버튼. `CaptureActionsTest` 5개: shouldReportSavedPhoto, shouldReportPhotoFailure, shouldStartRecordingOnFirstVideoToggle, shouldStopAndReportSavedVideoOnSecondToggle, shouldReportVideoFailureAndAllowRecordingAgain
 - [x] CameraX `ImageCapture`/`VideoCapture`로 갤러리(Pictures/AIGlasses, Movies/AIGlasses)에 저장. 사진은 1920x1440(AI 전송용 프레임과 같은 캡처를 쓴다)
 - [x] 실기기(SM-S938N)에서 사진 1장, 동영상 1개(1920x1080, 약 6초) 저장 확인
+- [x] HUD 숨기기/보기 버튼(오른쪽 위). 숨기면 이 버튼만 남고, 화면 탭 질문은 그대로 된다. 실기기에서 숨김/복원 확인
 - [ ] 동영상 녹화 중 AI에게 말로 질문했을 때 두 마이크가 함께 도는지 확인 (사용자)
 
 ### 6단계: 대화 번역 자막

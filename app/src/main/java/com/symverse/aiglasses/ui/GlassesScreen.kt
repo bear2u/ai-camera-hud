@@ -25,6 +25,10 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +60,7 @@ fun GlassesScreen(
     onTakePhoto: () -> Unit,
     onToggleVideo: () -> Unit,
 ) {
+    var hudVisible by rememberSaveable { mutableStateOf(true) }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (surfaceRequest != null) {
             CameraXViewfinder(surfaceRequest = surfaceRequest, modifier = Modifier.fillMaxSize())
@@ -67,22 +72,27 @@ fun GlassesScreen(
                 .safeDrawingPadding()
                 .padding(16.dp),
         ) {
-            Column(Modifier.align(Alignment.TopStart).fillMaxWidth(0.42f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatusCard(hud.status)
-                if (hud.userText.isNotBlank()) TextCard(title = "나", text = hud.userText)
-                if (hud.translationText.isNotBlank()) TextCard(title = "글자 번역", text = hud.translationText)
-                hud.error?.let { TextCard(title = "오류", text = it, line = Alert) }
-                capture.message?.let { TextCard(title = "촬영", text = it) }
+            if (hudVisible) Column(Modifier.align(Alignment.TopStart), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val cardWidth = Modifier.fillMaxWidth(0.42f)
+                // 상태와 모드 전환은 왼쪽에 붙여 오른쪽 버튼들과 겹치지 않게 한다.
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    StatusCard(hud.status)
+                    ModeSwitch(mode = mode, onSelect = onSelectMode)
+                }
+                if (hud.userText.isNotBlank()) TextCard(title = "나", text = hud.userText, modifier = cardWidth)
+                if (hud.translationText.isNotBlank()) TextCard(title = "글자 번역", text = hud.translationText, modifier = cardWidth)
+                hud.error?.let { TextCard(title = "오류", text = it, modifier = cardWidth, line = Alert) }
+                capture.message?.let { TextCard(title = "촬영", text = it, modifier = cardWidth) }
             }
-            Column(
+            if (hudVisible) Column(
                 Modifier.align(Alignment.CenterEnd).width(CaptureColumnWidth),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 PillButton("사진", onClick = onTakePhoto, modifier = Modifier.fillMaxWidth())
                 RecordButton(recording = capture.recording, onClick = onToggleVideo)
             }
-            ModeSwitch(mode = mode, onSelect = onSelectMode, modifier = Modifier.align(Alignment.TopCenter))
-            if (hud.assistantText.isNotBlank()) {
+
+            if (hudVisible && hud.assistantText.isNotBlank()) {
                 TextCard(
                     title = "AI 어시스턴트",
                     text = hud.assistantText,
@@ -94,10 +104,14 @@ fun GlassesScreen(
                 )
             }
             Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                AiToggle(on = hud.status != Status.Off, onClick = onToggleAi)
-                PillButton("설정", onClick = onOpenSettings)
+                // HUD를 숨겨도 이 버튼은 남겨서 다시 켤 수 있게 한다.
+                PillButton(if (hudVisible) "HUD 숨기기" else "HUD 보기", onClick = { hudVisible = !hudVisible })
+                if (hudVisible) {
+                    AiToggle(on = hud.status != Status.Off, onClick = onToggleAi)
+                    PillButton("설정", onClick = onOpenSettings)
+                }
             }
-            HintBar(hud.status, mode, Modifier.align(Alignment.BottomStart))
+            if (hudVisible) HintBar(hud.status, mode, Modifier.align(Alignment.BottomStart))
         }
     }
 }
