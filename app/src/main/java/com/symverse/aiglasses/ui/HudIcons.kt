@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.cos
 import kotlin.math.sin
 
-internal enum class HudIcon { Send, Mic, Stop, Shutter, Camera, Record, Eye, EyeOff, Power, Gear, Dots }
+internal enum class HudIcon { Send, Mic, Stop, Shutter, Camera, Record, Eye, EyeOff, Chat, ChatOff, Power, Gear, Dots }
 
 /** 아이콘만 있는 둥근 버튼. [description] 은 화면 낭독기가 읽는 이름이다. */
 @Composable
@@ -109,6 +109,19 @@ private fun DrawScope.draw(icon: HudIcon, tint: Color) {
             )
             drawCircle(tint, radius = 3 * u, center = at(12f, 12f))
             if (icon == HudIcon.EyeOff) drawLine(tint, at(4f, 20f), at(20f, 4f), strokeWidth = 2 * u, cap = StrokeCap.Round)
+        }
+        HudIcon.Chat, HudIcon.ChatOff -> {
+            drawRoundRect(tint, topLeft = at(3f, 4f), size = Size(18 * u, 13 * u), cornerRadius = CornerRadius(3 * u), style = line)
+            drawPath(
+                Path().apply {
+                    moveTo(8 * u, 17 * u)
+                    lineTo(8 * u, 21 * u)
+                    lineTo(12.5f * u, 17 * u)
+                },
+                tint,
+                style = line,
+            )
+            if (icon == HudIcon.ChatOff) drawLine(tint, at(4f, 21f), at(20f, 3f), strokeWidth = 2 * u, cap = StrokeCap.Round)
         }
         HudIcon.Power -> {
             drawArc(tint, -60f, 300f, false, topLeft = at(4f, 5f), size = Size(16 * u, 16 * u), style = line)

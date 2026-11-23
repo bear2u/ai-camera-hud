@@ -83,6 +83,7 @@ fun GlassesScreen(
     onSendText: (String) -> Unit,
 ) {
     var hudVisible by rememberSaveable { mutableStateOf(true) }
+    var chatVisible by rememberSaveable { mutableStateOf(true) }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (surfaceRequest != null) {
             CameraXViewfinder(surfaceRequest = surfaceRequest, modifier = Modifier.fillMaxSize())
@@ -95,7 +96,7 @@ fun GlassesScreen(
                 .imePadding()
                 .padding(16.dp),
         ) {
-            if (hudVisible) {
+            if (hudVisible && chatVisible) {
                 ChatPanel(
                     hud = hud,
                     mode = mode,
@@ -117,6 +118,13 @@ fun GlassesScreen(
             capture.message?.let { CaptureNotice(it, Modifier.align(Alignment.BottomEnd)) }
             Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (hudVisible) {
+                    // 채팅창만 접어서 카메라 화면을 넓게 본다. 화면 탭으로 말하기는 그대로 된다.
+                    IconButton(
+                        if (chatVisible) HudIcon.ChatOff else HudIcon.Chat,
+                        if (chatVisible) "채팅창 숨기기" else "채팅창 보기",
+                        onClick = { chatVisible = !chatVisible },
+                        fill = if (chatVisible) CardFill else Primary,
+                    )
                     IconButton(HudIcon.EyeOff, "HUD 숨기기", onClick = { hudVisible = false })
                     val aiOn = hud.status != Status.Off
                     IconButton(

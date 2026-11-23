@@ -166,6 +166,7 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [x] 글자 질문: shouldEncodeTypedTextAsUserMessage, shouldSendFrameAndTypedQuestionAndRequestSpokenAnswer, shouldSolveTypedQuestionAsTextWithHighDetailFrame, shouldIgnoreTypedTextWhenBlankOrBusy, shouldStopLeftoverPlaybackWhenTypedQuestionIsSent
 - [x] 왼쪽 채팅창: 모드 선택(질문/번역/통역/풀이), 위로 올려 볼 수 있는 말풍선 기록, 글자 입력, 보내기·마이크 버튼. 모든 답이 여기에 쌓인다
 - [x] 버튼을 아이콘으로: 보내기, 마이크(듣는 중에는 정지), 사진, 녹화, HUD 보기/숨기기, AI 전원, 설정
+- [x] 채팅창 보기/숨기기 아이콘(오른쪽 위 말풍선). 숨겨도 다른 버튼과 화면 탭 말하기는 그대로. 에뮬레이터에서 확인
 - [ ] 실기기 확인 (사용자): 삼성 키보드가 떴을 때 입력칸이 가려지지 않는지, 긴 답을 위로 올려 읽을 때 스크롤이 자연스러운지
 
 ### 이후 단계 (이번 범위 밖)
