@@ -18,6 +18,10 @@ class GlassesSession(
             onHudChanged(value)
         }
 
+    /** 화면 탭이 하는 일. 다음 탭부터 적용된다. */
+    @Volatile
+    var mode = Mode.Ask
+
     private var playingItemId: String? = null
 
     /** 끊은 응답의 늦게 도착한 음성을 버린다. */
@@ -47,7 +51,9 @@ class GlassesSession(
     @Synchronized
     fun tap() {
         when (hud.status) {
-            Status.Idle -> if (!stopPlayback()) startListening()
+            Status.Idle -> if (!stopPlayback()) {
+                if (mode == Mode.TranslateText) startTextTranslation() else startListening()
+            }
             Status.Listening -> finishListening()
             Status.Speaking -> interrupt()
             Status.Error -> start()
@@ -78,6 +84,22 @@ class GlassesSession(
         playingItemId?.let { transport.send(ClientEvents.truncate(it, playedMs)) }
         playingItemId = null
         return true
+    }
+
+    private fun startTextTranslation() {
+        hud = HudState(status = Status.Thinking)
+        frames.capture(::onTranslationFrame)
+    }
+
+    @Synchronized
+    private fun onTranslationFrame(jpeg: ByteArray?) {
+        if (hud.status != Status.Thinking) return
+        if (jpeg == null) {
+            hud = hud.copy(status = Status.Idle, error = "카메라 장면을 가져오지 못했습니다.")
+            return
+        }
+        transport.send(ClientEvents.imageItem(jpeg))
+        transport.send(ClientEvents.responseCreate(listOf("text"), TRANSLATE_INSTRUCTIONS))
     }
 
     private fun finishListening() {
@@ -134,6 +156,9 @@ class GlassesSession(
 
     private companion object {
         const val MISSING_KEY = "API 키가 없습니다. 오른쪽 위 설정에서 입력하세요."
+        const val TRANSLATE_INSTRUCTIONS =
+            "방금 받은 사진에 보이는 글자(간판, 메뉴, 표지판 등)를 읽고 한국어로 번역해라. " +
+                "'원문 → 번역' 형식으로 한 줄에 하나씩만 써라. 글자가 없으면 '보이는 글자가 없습니다'라고만 답해라."
         const val INSTRUCTIONS =
             "너는 AI 안경에 들어 있는 음성 비서다. 사용자의 질문과 함께 사용자가 지금 보고 있는 장면의 사진이 온다. " +
                 "사진을 근거로 한국어로 한두 문장으로 짧고 자연스럽게 답해라. 사진과 무관한 질문에는 그냥 답해라."

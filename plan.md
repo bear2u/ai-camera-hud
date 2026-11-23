@@ -116,7 +116,7 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [ ] 입력 음성 전사: 이 OpenAI 프로젝트는 `gpt-4o-mini-transcribe`, `gpt-4o-transcribe`, `whisper-1`, `gpt-realtime-whisper` 모두 접근 권한이 없어 "나" 자막이 나오지 않는다. 프로젝트에서 전사 모델을 허용하면 코드 변경 없이 나온다
 
 ### 4단계: 글자 번역
-- [ ] shouldSendFrameWithTranslateInstructionAndTextOnlyResponse
+- [x] shouldSendFrameWithTranslateInstructionAndTextOnlyResponse
 - [ ] shouldShowTranslationTextOnHud
 - [ ] 모드 전환 UI와 번역 카드, 실기기 확인
 

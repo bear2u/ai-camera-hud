@@ -60,10 +60,12 @@ object ClientEvents {
 
     fun commit(): String = buildJsonObject { put("type", "input_audio_buffer.commit") }.toString()
 
-    fun responseCreate(outputModalities: List<String>): String = buildJsonObject {
+    /** [instructions] 를 주면 이 응답에만 세션 지시 대신 쓴다. */
+    fun responseCreate(outputModalities: List<String>, instructions: String? = null): String = buildJsonObject {
         put("type", "response.create")
         putJsonObject("response") {
             putJsonArray("output_modalities") { outputModalities.forEach { add(it) } }
+            if (instructions != null) put("instructions", instructions)
         }
     }.toString()
 

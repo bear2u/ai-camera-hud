@@ -2,6 +2,7 @@ package com.symverse.aiglasses.core
 
 import com.symverse.aiglasses.realtime.ClientEvents
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertArrayEquals
@@ -279,5 +280,21 @@ class GlassesSessionTest {
 
         assertEquals(Status.Error, session.hud.status)
         assertEquals("Incorrect API key provided", session.hud.error)
+    }
+
+    @Test
+    fun shouldSendFrameWithTranslateInstructionAndTextOnlyResponse() {
+        connect()
+        session.mode = Mode.TranslateText
+
+        session.tap()
+
+        assertEquals(Status.Thinking, session.hud.status)
+        assertFalse(mic.running)
+        assertEquals(listOf("session.update", "conversation.item.create", "response.create"), sentTypes())
+        assertEquals(ClientEvents.imageItem(byteArrayOf(9, 9)), transport.sent[1])
+        val response = Json.parseToJsonElement(transport.sent.last()).jsonObject.getValue("response").jsonObject
+        assertEquals(listOf("text"), response.getValue("output_modalities").jsonArray.map { it.jsonPrimitive.content })
+        assertTrue(response.getValue("instructions").jsonPrimitive.content.contains("한국어로 번역"))
     }
 }
