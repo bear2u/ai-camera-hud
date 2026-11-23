@@ -1,13 +1,6 @@
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-}
-
-val localProperties = Properties().apply {
-    val file = rootProject.file("local.properties")
-    if (file.exists()) file.inputStream().use(::load)
 }
 
 android {
@@ -24,8 +17,6 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
-
-        buildConfigField("String", "OPENAI_API_KEY", "\"${localProperties.getProperty("OPENAI_API_KEY", "")}\"")
     }
 
     compileOptions {
@@ -35,7 +26,6 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = true
     }
 }
 

@@ -40,7 +40,13 @@ import com.symverse.aiglasses.core.Status
 
 /** 카메라 화면 전체 위에 AI 오버레이를 얹는다. 화면 어디든 탭하면 [onTap]. */
 @Composable
-fun GlassesScreen(hud: HudState, surfaceRequest: SurfaceRequest?, onTap: () -> Unit, onToggleAi: () -> Unit) {
+fun GlassesScreen(
+    hud: HudState,
+    surfaceRequest: SurfaceRequest?,
+    onTap: () -> Unit,
+    onToggleAi: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (surfaceRequest != null) {
             CameraXViewfinder(surfaceRequest = surfaceRequest, modifier = Modifier.fillMaxSize())
@@ -64,7 +70,10 @@ fun GlassesScreen(hud: HudState, surfaceRequest: SurfaceRequest?, onTap: () -> U
                     modifier = Modifier.align(Alignment.BottomEnd).fillMaxWidth(0.46f),
                 )
             }
-            AiToggle(on = hud.status != Status.Off, onClick = onToggleAi, modifier = Modifier.align(Alignment.TopEnd))
+            Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                AiToggle(on = hud.status != Status.Off, onClick = onToggleAi)
+                PillButton("설정", onClick = onOpenSettings)
+            }
             HintBar(hud.status, Modifier.align(Alignment.BottomStart))
         }
     }
@@ -86,12 +95,11 @@ private fun StatusCard(status: Status) {
 /** AI 연결을 켜고 끄는 버튼. */
 @Composable
 private fun AiToggle(on: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(50)
     Row(
         modifier
-            .clip(shape)
-            .background(if (on) CardFill else Primary, shape)
-            .border(1.dp, CardLine, shape)
+            .clip(PillShape)
+            .background(if (on) CardFill else Primary, PillShape)
+            .border(1.dp, CardLine, PillShape)
             .clickable(role = Role.Button, onClick = onClick)
             .heightIn(min = 48.dp)
             .padding(horizontal = 18.dp),

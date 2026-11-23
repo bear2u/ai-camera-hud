@@ -110,7 +110,11 @@ class GlassesSession(
                 hud = hud.copy(assistantText = hud.assistantText + received.text)
             is ServerEvent.InputTranscript -> hud = hud.copy(userText = received.text)
             is ServerEvent.ResponseDone -> hud = hud.copy(status = Status.Idle)
-            is ServerEvent.Error -> hud = hud.copy(status = Status.Idle, error = received.message)
+            // 질문 중이 아닐 때 오는 오류(잘못된 키 등)는 연결 자체의 문제다.
+            is ServerEvent.Error -> hud = hud.copy(
+                status = if (hud.status == Status.Idle) Status.Error else Status.Idle,
+                error = received.message,
+            )
             is ServerEvent.AudioDelta -> if (!playbackMuted) {
                 playingItemId = received.itemId
                 sink.play(received.pcm)

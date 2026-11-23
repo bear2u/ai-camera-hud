@@ -270,4 +270,14 @@ class GlassesSessionTest {
 
         assertEquals(HudState(status = Status.Off), session.hud)
     }
+
+    @Test
+    fun shouldTreatApiErrorOutsideATurnAsConnectionError() {
+        connect()
+
+        receive("""{"type":"error","error":{"message":"Incorrect API key provided"}}""")
+
+        assertEquals(Status.Error, session.hud.status)
+        assertEquals("Incorrect API key provided", session.hud.error)
+    }
 }

@@ -10,7 +10,7 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - AI: **OpenAI Realtime API** (실시간 음성 + 카메라 프레임)
 - 1차 범위: **보고 묻기, 간판·메뉴 번역, 대화 번역 자막, 음성으로 촬영** 네 가지 모두
 - 호출: **화면 탭** (웨이크워드는 이후 단계)
-- 키: **앱 내 키**(`local.properties` → `BuildConfig`), 검증은 **실기기**
+- 키: 앱 **설정 화면에서 입력해 저장**(빌드에 넣지 않음), 검증은 **실기기**. `local.properties`의 `OPENAI_API_KEY`는 실서버 스모크 테스트만 읽는다
 
 ## 컨셉 확정 (2026-11-23, 사용자 그림)
 손에 들고 가로로 쓰는 "AI Camera" 뷰어. 카메라 전체 화면 위에 반투명 카드(내 말, AI 답, 번역, 사물 정보)를 얹는다. 헤드셋용 좌우 분할 화면은 하지 않는다. HUD는 모노 그린이 아니라 어두운 남색 카드에 하늘색 테두리다.
@@ -110,6 +110,8 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [x] 실서버 스모크 테스트(`OPENAI_LIVE=1`)로 session.update, 이미지 입력, 음성 입출력 이벤트 형태 확인
 - [x] 실기기(SM-S938N, Android 17)에서 탭 → 듣기 → 탭 → 카메라 장면에 대한 AI 답 표시 확인
 - [x] AI 활성화/중지 버튼(화면 오른쪽 위): shouldCloseConnectionAndTurnOffWhenStopped, shouldIgnoreTapAndLateServerEventsWhileOff, shouldReconnectWhenStartedAfterStop, shouldStayOffWhenConnectionReportsFailureAfterStop. 실기기에서 버튼으로 끄고 다시 켜지는 것 확인
+- [x] 설정 화면(오른쪽 위 설정 버튼): API 키 입력·저장, 모델 선택. 키는 더 이상 빌드에 넣지 않고 앱 설정에 저장한다. `SettingsRepositoryTest` 4개, shouldTreatApiErrorOutsideATurnAsConnectionError. 에뮬레이터에서 가짜 값으로 저장 → 오류 표시 → 재시작 후 유지 확인
+- [ ] 실기기 설정 화면에서 실제 키를 넣고 연결 확인 (사용자)
 - [ ] 실기기에서 사람이 직접 말로 질문하고 스피커로 답을 듣는 확인 (사용자)
 - [ ] 입력 음성 전사: 이 OpenAI 프로젝트는 `gpt-4o-mini-transcribe`, `gpt-4o-transcribe`, `whisper-1`, `gpt-realtime-whisper` 모두 접근 권한이 없어 "나" 자막이 나오지 않는다. 프로젝트에서 전사 모델을 허용하면 코드 변경 없이 나온다
 
