@@ -249,7 +249,8 @@ private fun Bubble(entry: LogEntry, transparent: Boolean) {
             // 말풍선 없이 글자만. 밝은 장면에서도 읽히도록 그림자를 준다.
             BasicText(
                 entry.text,
-                style = BodyStyle.copy(shadow = TextShadow, color = if (mine) Color(0xFF9CCBFF) else Ink),
+                // 답은 안경 HUD처럼 녹색으로, 내 말은 하늘색으로 구분한다.
+                style = BodyStyle.copy(shadow = TextShadow, color = if (mine) Color(0xFF9CCBFF) else Live),
                 modifier = Modifier.padding(start = if (mine) 40.dp else 0.dp, end = if (mine) 0.dp else 16.dp),
             )
             return@Column
