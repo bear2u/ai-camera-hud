@@ -140,4 +140,15 @@ class RealtimeEventsTest {
     fun shouldIgnoreUnknownEventType() {
         assertEquals(ServerEvent.Unknown, ServerEvent.decode("""{"type":"rate_limits.updated","rate_limits":[]}"""))
     }
+
+    @Test
+    fun shouldEncodeConversationTranslationUpdateWithServerVadAndTextOutput() {
+        val session = parse(ClientEvents.conversationTranslationUpdate()).obj("session")
+
+        assertEquals("realtime", session.str("type"))
+        assertEquals(listOf("text"), session.getValue("output_modalities").jsonArray.map { it.jsonPrimitive.content })
+        assertEquals("server_vad", session.obj("audio").obj("input").obj("turn_detection").str("type"))
+        assertEquals(true, session.obj("audio").obj("input").obj("turn_detection").getValue("create_response").jsonPrimitive.content.toBoolean())
+        assertEquals(true, session.str("instructions").contains("한국어로 번역"))
+    }
 }

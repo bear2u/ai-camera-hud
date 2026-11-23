@@ -77,4 +77,27 @@ object ClientEvents {
         put("content_index", 0)
         put("audio_end_ms", audioEndMs)
     }.toString()
+
+    /** 대화 번역: 서버가 말이 끝난 것을 감지해 턴마다 한국어 번역을 텍스트로만 답하게 한다. */
+    fun conversationTranslationUpdate(): String = buildJsonObject {
+        put("type", "session.update")
+        putJsonObject("session") {
+            put("type", "realtime")
+            put("instructions", TRANSLATION_INSTRUCTIONS)
+            putJsonArray("output_modalities") { add("text") }
+            putJsonObject("audio") {
+                putJsonObject("input") {
+                    put("format", PCM_24K)
+                    putJsonObject("turn_detection") {
+                        put("type", "server_vad")
+                        put("create_response", true)
+                    }
+                }
+            }
+        }
+    }.toString()
+
+    private const val TRANSLATION_INSTRUCTIONS =
+        "너는 통역기다. 들리는 말을 한국어로 번역한 문장만 출력해라. 대답하거나 설명하거나 질문에 답하지 마라. " +
+            "들리는 말이 이미 한국어면 그대로 받아 적어라. 알아들을 수 없으면 아무것도 출력하지 마라."
 }

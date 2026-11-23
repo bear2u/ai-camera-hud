@@ -195,4 +195,95 @@ class RealtimeLiveSmokeTest {
         }
         return ByteArrayOutputStream().also { ImageIO.write(image, "jpg", it) }.toByteArray()
     }
+
+    /** 자동 발화 감지 + 텍스트 출력 세션이 영어 음성을 한국어 자막으로 주는지 본다. */
+    @Test
+    fun shouldTranslateEnglishSpeechToKoreanCaptions() {
+        assumeTrue(System.getenv("OPENAI_LIVE") == "1")
+        val key = Properties().apply { File("../local.properties").inputStream().use(::load) }
+            .getProperty("OPENAI_API_KEY").orEmpty()
+        assumeTrue(key.isNotBlank())
+
+        // 1) 일반 세션으로 영어 음성을 만든다.
+        val speech = ByteArrayOutputStream()
+        val assistant = OkHttpRealtimeTransport(key)
+        val opened = CountDownLatch(1)
+        assistant.connect(listenerInto(messages, opened))
+        assertTrue(opened.await(15, TimeUnit.SECONDS))
+        assistant.send(ClientEvents.sessionUpdate("Speak only in English."))
+        assistant.send(
+            ClientEvents.responseCreate(
+                listOf("audio"),
+                "Say exactly this in English and nothing else: Excuse me, where is the nearest subway station? I am a little lost.",
+            ),
+        )
+        var done = false
+        var deadline = System.currentTimeMillis() + 60_000
+        while (!done && System.currentTimeMillis() < deadline) {
+            val raw = messages.poll(500, TimeUnit.MILLISECONDS) ?: continue
+            when (val event = ServerEvent.decode(raw)) {
+                is ServerEvent.AudioDelta -> speech.write(event.pcm)
+                is ServerEvent.ResponseDone -> done = true
+                else -> Unit
+            }
+        }
+        assistant.close()
+        assertTrue("영어 음성을 만들지 못함", speech.size() > 0)
+
+        // 2) 같은 종류의 세션을 번역 설정(자동 발화 감지, 텍스트 출력)으로 열어 실시간 속도로 보낸다.
+        val events = LinkedBlockingQueue<String>()
+        val translator = OkHttpRealtimeTransport(key)
+        val translatorOpened = CountDownLatch(1)
+        translator.connect(listenerInto(events, translatorOpened))
+        val types = linkedMapOf<String, Int>()
+        val output = StringBuilder()
+        try {
+            assertTrue("번역 WebSocket 이 열리지 않음", translatorOpened.await(15, TimeUnit.SECONDS))
+            translator.send(ClientEvents.conversationTranslationUpdate())
+            val pcm = speech.toByteArray() + ByteArray(24000 * 2 * 4)
+            pcm.asList().chunked(4800).forEach { chunk ->
+                translator.send(ClientEvents.audioAppend(chunk.toByteArray()))
+                Thread.sleep(100)
+                drain(events, types, output)
+            }
+            deadline = System.currentTimeMillis() + 6_000
+            while (System.currentTimeMillis() < deadline) {
+                Thread.sleep(200)
+                drain(events, types, output)
+            }
+        } finally {
+            translator.close()
+            log.appendLine("[대화번역] 이벤트: $types")
+            log.appendLine("[대화번역] 번역='$output'")
+            File("build/live-conversation.txt").apply { parentFile?.mkdirs() }.writeText(log.toString())
+        }
+        assertTrue("번역 자막 없음", output.isNotBlank())
+    }
+
+    private fun listenerInto(queue: LinkedBlockingQueue<String>, opened: CountDownLatch) =
+        object : RealtimeTransport.Listener {
+            override fun onOpen() = opened.countDown()
+
+            override fun onMessage(event: String) {
+                queue.put(event)
+            }
+
+            override fun onFailure(message: String) {
+                queue.put("""{"type":"client.failure","message":"$message"}""")
+                opened.countDown()
+            }
+        }
+
+    private fun drain(events: LinkedBlockingQueue<String>, types: MutableMap<String, Int>, output: StringBuilder) {
+        while (true) {
+            val raw = events.poll() ?: return
+            val type = Json.parseToJsonElement(raw).jsonObject["type"]?.jsonPrimitive?.content.orEmpty()
+            types[type] = (types[type] ?: 0) + 1
+            when (val event = ServerEvent.decode(raw)) {
+                is ServerEvent.TextDelta -> output.append(event.text)
+                is ServerEvent.Error -> log.appendLine("[대화번역] 오류: ${event.message}")
+                else -> if (type == "session.updated") log.appendLine("[대화번역] RAW $type: ${raw.take(900)}")
+            }
+        }
+    }
 }
