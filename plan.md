@@ -12,6 +12,11 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - 호출: **화면 탭** (웨이크워드는 이후 단계)
 - 키: **앱 내 키**(`local.properties` → `BuildConfig`), 검증은 **실기기**
 
+## 컨셉 확정 (2026-11-23, 사용자 그림)
+손에 들고 가로로 쓰는 "AI Camera" 뷰어. 카메라 전체 화면 위에 반투명 카드(내 말, AI 답, 번역, 사물 정보)를 얹는다. 헤드셋용 좌우 분할 화면은 하지 않는다. HUD는 모노 그린이 아니라 어두운 남색 카드에 하늘색 테두리다.
+
+그림에 있지만 아직 계획에 없던 것: 화면 속 사물 위치에 붙는 라벨(나무, 카페 등)과 장소 정보(평점, 영업시간). Realtime API는 사물 위치 좌표를 주지 않으므로 별도 단계가 필요하다(이후 단계 참고).
+
 ## 접근 방식
 
 ### 통신 (OpenAI 공식 문서 2026-11-23 조회 기준)
@@ -100,14 +105,17 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [x] shouldClearPreviousTextsWhenListeningStarts (추가)
 
 ### 3단계: 어댑터와 화면, 첫 실기기 확인 (수동 검증)
-- [ ] `OkHttpRealtimeTransport`, `CameraXFrameSource`, `MicRecorder`, `PcmPlayer`
-- [ ] `GlassesScreen` HUD(모노 그린, 상태·자막), 권한 요청과 거부 안내
-- [ ] 실기기에서 보고 묻기 확인. 실제 이벤트 형태가 문서 요약과 다르면 1단계 테스트부터 고친다
+- [x] `OkHttpRealtimeTransport`, `CameraFrameSource`, `MicRecorder`, `PcmPlayer`
+- [x] `GlassesScreen` 가로 화면 카드형 오버레이(상태·내 말·AI 답·오류), 권한 요청과 거부 안내
+- [x] 실서버 스모크 테스트(`OPENAI_LIVE=1`)로 session.update, 이미지 입력, 음성 입출력 이벤트 형태 확인
+- [x] 실기기(SM-S938N, Android 17)에서 탭 → 듣기 → 탭 → 카메라 장면에 대한 AI 답 표시 확인
+- [ ] 실기기에서 사람이 직접 말로 질문하고 스피커로 답을 듣는 확인 (사용자)
+- [ ] 입력 음성 전사: 이 OpenAI 프로젝트는 `gpt-4o-mini-transcribe`, `gpt-4o-transcribe`, `whisper-1`, `gpt-realtime-whisper` 모두 접근 권한이 없어 "나" 자막이 나오지 않는다. 프로젝트에서 전사 모델을 허용하면 코드 변경 없이 나온다
 
 ### 4단계: 글자 번역
 - [ ] shouldSendFrameWithTranslateInstructionAndTextOnlyResponse
 - [ ] shouldShowTranslationTextOnHud
-- [ ] HUD 모드 전환 UI, 실기기 확인
+- [ ] 모드 전환 UI와 번역 카드, 실기기 확인
 
 ### 5단계: 음성으로 촬영
 - [ ] shouldRegisterCaptureToolsInSessionUpdate
@@ -132,7 +140,7 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [ ] 실기기 확인
 
 ### 이후 단계 (이번 범위 밖)
-웨이크워드, 60분 세션 만료 재연결, 임시 키 백엔드, WebRTC 전송, 오프라인 번역, 텔레프롬프터, 내비게이션.
+화면 속 사물 위치 라벨(기기 내 사물 검출 + AI 이름 붙이기), 장소 정보(위치 + 지도 API), 웨이크워드, 60분 세션 만료 재연결, 임시 키 백엔드, WebRTC 전송, 오프라인 번역, 텔레프롬프터, 내비게이션.
 
 ## 검증
 - 단위 테스트: `./gradlew :app:testDebugUnitTest` (작업 중에는 해당 테스트 클래스만 `--tests`로, 단계가 끝날 때 전체 실행)
