@@ -34,6 +34,13 @@ object Geo {
         return (Math.toDegrees(atan2(y, x)) + 360) % 360
     }
 
+    /** 100m 미만은 그대로, 1km 미만은 10m 단위, 그 이상은 km 로 적는다. */
+    fun formatDistance(meters: Int): String = when {
+        meters < 100 -> "${meters}m"
+        meters < 1000 -> "${meters / 10 * 10}m"
+        else -> "%.1fkm".format(Locale.US, meters / 1000.0)
+    }
+
     fun compassName(degrees: Float): String {
         val names = listOf("북", "북동", "동", "남동", "남", "남서", "서", "북서")
         return names[(((degrees % 360 + 360) % 360 + 22.5f) / 45f).toInt() % 8]

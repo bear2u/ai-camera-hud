@@ -51,4 +51,11 @@ class GeoTest {
         )
         assertNull(GeoFix(LatLng(35.0, 139.0)).headingDegrees)
     }
+
+    @Test
+    fun shouldFormatDistanceForDisplay() {
+        assertEquals("8m", Geo.formatDistance(8))
+        assertEquals("120m", Geo.formatDistance(123))
+        assertEquals("1.3km", Geo.formatDistance(1260))
+    }
 }
