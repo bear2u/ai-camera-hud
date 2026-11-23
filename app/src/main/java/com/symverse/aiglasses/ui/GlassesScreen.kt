@@ -36,16 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.symverse.aiglasses.core.HudState
 import com.symverse.aiglasses.core.Status
 
-private val CardFill = Color(0xCC0A1B2E)
-private val CardLine = Color(0xFF5CC8FF)
-private val Ink = Color(0xFFF2F8FF)
-private val InkDim = Color(0xFFA9C4DC)
-private val Live = Color(0xFF3DDC84)
-private val Alert = Color(0xFFFF6B6B)
-private val CardShape = RoundedCornerShape(16.dp)
 
-private val TitleStyle = TextStyle(color = InkDim, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-private val BodyStyle = TextStyle(color = Ink, fontSize = 16.sp, lineHeight = 22.sp)
 
 /** 카메라 화면 전체 위에 AI 오버레이를 얹는다. 화면 어디든 탭하면 [onTap]. */
 @Composable
@@ -99,7 +90,7 @@ private fun AiToggle(on: Boolean, onClick: () -> Unit, modifier: Modifier = Modi
     Row(
         modifier
             .clip(shape)
-            .background(if (on) CardFill else Color(0xE61F6FEB), shape)
+            .background(if (on) CardFill else Primary, shape)
             .border(1.dp, CardLine, shape)
             .clickable(role = Role.Button, onClick = onClick)
             .heightIn(min = 48.dp)
