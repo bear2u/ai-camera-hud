@@ -29,6 +29,7 @@ class MainActivity : ComponentActivity() {
     private val mic = MicRecorder()
     private var player: PcmPlayer? = null
     private var session: GlassesSession? = null
+    private var resumeOnStart = false
 
     private val permissionRequest =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
@@ -74,6 +75,24 @@ class MainActivity : ComponentActivity() {
 
     private fun showPermissionNeeded() {
         hud = HudState(status = Status.Error, error = "카메라와 마이크 권한이 필요합니다.")
+    }
+
+    /** 화면을 벗어나면 마이크와 연결을 끊고, 돌아오면 켜져 있던 경우에만 다시 켠다. */
+    override fun onStop() {
+        val current = session
+        if (current != null && current.hud.status != Status.Off) {
+            resumeOnStart = true
+            current.stop()
+        }
+        super.onStop()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (resumeOnStart) {
+            resumeOnStart = false
+            session?.start()
+        }
     }
 
     override fun onDestroy() {
