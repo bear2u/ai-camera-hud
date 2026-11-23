@@ -8,7 +8,7 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 
 사용자 결정:
 - AI: **OpenAI Realtime API** (실시간 음성 + 카메라 프레임)
-- 1차 범위: **보고 묻기, 간판·메뉴 번역, 대화 번역 자막, 음성으로 촬영** 네 가지 모두
+- 1차 범위: **보고 묻기, 간판·메뉴 번역, 대화 번역 자막, 촬영 버튼**
 - 호출: **화면 탭** (웨이크워드는 이후 단계)
 - 키: 앱 **설정 화면에서 입력해 저장**(빌드에 넣지 않음), 검증은 **실기기**. `local.properties`의 `OPENAI_API_KEY`는 실서버 스모크 테스트만 읽는다
 
@@ -136,17 +136,17 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [ ] 실기기에서 블루투스 이어폰으로 확인 (사용자): 이어폰 마이크로 녹음되는지(logcat 태그 `AIGlassesMic`), 말 첫머리가 잘리지 않는지, 답의 첫머리가 이어폰으로 제대로 나오는지
 
 ### 6단계: 대화 번역 자막
-- [ ] 번역 엔드포인트가 한국어(`ko`)를 받는지 실제 연결로 확인. 안 되면 이 단계 테스트를 일반 세션 방식으로 바꾼다
-- [ ] shouldEncodeTranslationSessionUpdateWithTargetLanguage (`TranslationEventsTest`)
-- [ ] shouldEncodeTranslationAudioAppend
-- [ ] shouldDecodeOutputTranscriptDelta
-- [ ] shouldDecodeInputTranscriptDelta
-- [ ] shouldOpenTranslationConnectionWhenStarted (`TranslationSessionTest`)
-- [ ] shouldSendMicAudioIn200msChunks
-- [ ] shouldAppendTranslatedCaptionToHud
-- [ ] shouldKeepOnlyRecentCaptionLines
-- [ ] shouldSendSessionCloseWhenStopped
-- [ ] 실기기 확인
+- [x] 번역 전용 엔드포인트 실제 연결 확인: 이 계정은 `gpt-realtime-translate`에 접근 권한이 없다(model_not_found). 계획대로 일반 세션 방식으로 바꿈
+- [x] 실서버 스모크 테스트: 일반 세션 + `server_vad` + 텍스트 출력 + 번역 지시로 영어 음성이 한국어 자막으로 옴
+- [x] shouldEncodeConversationTranslationUpdateWithServerVadAndTextOutput (`RealtimeEventsTest`)
+- [x] shouldSwitchSessionToTranslationAndStreamMicWhenConversationStarts (`GlassesSessionTest`)
+- [x] shouldAppendTranslatedCaptionPerTurnAndKeepListening
+- [x] shouldKeepOnlyRecentCaptionLines (최근 3줄)
+- [x] shouldRestoreAssistantSessionWhenConversationStops
+- [x] shouldEndConversationWhenApiErrorArrives
+- [x] shouldIgnoreLateTranslationAfterConversationStops
+- [x] 모드 전환에 "대화 번역" 추가, 자막 카드(오른쪽 아래). 대화 번역 중에는 블루투스 이어폰이 있어도 기기 마이크로 듣는다
+- [ ] 실기기 확인 (사용자): 상대의 말이 한국어 자막으로 뜨는지, 주변 소음에서 턴이 잘 나뉘는지
 
 ### 이후 단계 (이번 범위 밖)
 화면 속 사물 위치 라벨(기기 내 사물 검출 + AI 이름 붙이기), 장소 정보(위치 + 지도 API), 웨이크워드, 60분 세션 만료 재연결, 임시 키 백엔드, WebRTC 전송, 오프라인 번역, 텔레프롬프터, 내비게이션.

@@ -22,6 +22,10 @@ class GlassesSession(
     @Volatile
     var mode = Mode.Ask
 
+    /** 대화 번역 중이면 true. 서버가 턴을 나누고 번역을 텍스트로 준다. */
+    private var conversing = false
+    private var captionOpen = false
+
     private var playingItemId: String? = null
 
     /** 끊은 응답의 늦게 도착한 음성을 버린다. */
@@ -41,6 +45,7 @@ class GlassesSession(
     /** AI를 끈다. 다시 켜려면 [start]. */
     @Synchronized
     fun stop() {
+        conversing = false
         mic.stop()
         sink.stop()
         transport.close()
@@ -52,9 +57,13 @@ class GlassesSession(
     fun tap() {
         when (hud.status) {
             Status.Idle -> if (!stopPlayback()) {
-                if (mode == Mode.TranslateText) startTextTranslation() else startListening()
+                when (mode) {
+                    Mode.Ask -> startListening()
+                    Mode.TranslateText -> startTextTranslation()
+                    Mode.Conversation -> startConversation()
+                }
             }
-            Status.Listening -> finishListening()
+            Status.Listening -> if (conversing) stopConversation() else finishListening()
             Status.Speaking -> interrupt()
             Status.Error -> start()
             else -> Unit
@@ -84,6 +93,29 @@ class GlassesSession(
         playingItemId?.let { transport.send(ClientEvents.truncate(it, playedMs)) }
         playingItemId = null
         return true
+    }
+
+    private fun startConversation() {
+        transport.send(ClientEvents.conversationTranslationUpdate())
+        conversing = true
+        captionOpen = false
+        startListening()
+    }
+
+    private fun stopConversation() {
+        mic.stop()
+        conversing = false
+        transport.send(ClientEvents.clearInputAudio())
+        transport.send(ClientEvents.sessionUpdate(INSTRUCTIONS))
+        hud = hud.copy(status = Status.Idle)
+    }
+
+    /** 번역된 말 한 턴을 자막 한 줄로 쌓는다. */
+    private fun appendCaption(text: String) {
+        val lines = hud.captions
+        val updated = if (captionOpen) lines.dropLast(1) + (lines.last() + text) else lines + text
+        hud = hud.copy(captions = updated.takeLast(MAX_CAPTIONS))
+        captionOpen = true
     }
 
     private fun startTextTranslation() {
@@ -130,14 +162,23 @@ class GlassesSession(
         when (val received = ServerEvent.decode(event)) {
             is ServerEvent.AudioTranscriptDelta ->
                 hud = hud.copy(assistantText = hud.assistantText + received.text)
-            is ServerEvent.TextDelta -> hud = hud.copy(translationText = hud.translationText + received.text)
+            is ServerEvent.TextDelta ->
+                if (conversing) {
+                    appendCaption(received.text)
+                } else if (hud.status == Status.Thinking) {
+                    hud = hud.copy(translationText = hud.translationText + received.text)
+                }
             is ServerEvent.InputTranscript -> hud = hud.copy(userText = received.text)
-            is ServerEvent.ResponseDone -> hud = hud.copy(status = Status.Idle)
+            is ServerEvent.ResponseDone -> if (conversing) captionOpen = false else hud = hud.copy(status = Status.Idle)
             // 질문 중이 아닐 때 오는 오류(잘못된 키 등)는 연결 자체의 문제다.
-            is ServerEvent.Error -> hud = hud.copy(
-                status = if (hud.status == Status.Idle) Status.Error else Status.Idle,
-                error = received.message,
-            )
+            is ServerEvent.Error -> {
+                mic.stop()
+                conversing = false
+                hud = hud.copy(
+                    status = if (hud.status == Status.Idle) Status.Error else Status.Idle,
+                    error = received.message,
+                )
+            }
             is ServerEvent.AudioDelta -> if (!playbackMuted) {
                 playingItemId = received.itemId
                 sink.play(received.pcm)
@@ -150,12 +191,14 @@ class GlassesSession(
     @Synchronized
     override fun onFailure(message: String) {
         if (hud.status == Status.Off) return
+        conversing = false
         mic.stop()
         sink.stop()
         hud = hud.copy(status = Status.Error, error = message)
     }
 
     private companion object {
+        const val MAX_CAPTIONS = 3
         const val MISSING_KEY = "API 키가 없습니다. 오른쪽 위 설정에서 입력하세요."
         const val TRANSLATE_INSTRUCTIONS =
             "방금 받은 사진에 보이는 글자(간판, 메뉴, 표지판 등)를 읽고 한국어로 번역해라. " +

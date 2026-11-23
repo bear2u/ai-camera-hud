@@ -98,10 +98,15 @@ fun GlassesScreen(
                 RecordButton(recording = capture.recording, onClick = onToggleVideo)
             }
 
-            if (hudVisible && hud.assistantText.isNotBlank()) {
+            val bottomCard = when {
+                hud.captions.isNotEmpty() -> "대화 번역" to hud.captions.joinToString("\n")
+                hud.assistantText.isNotBlank() -> "AI 어시스턴트" to hud.assistantText
+                else -> null
+            }
+            if (hudVisible && bottomCard != null) {
                 TextCard(
-                    title = "AI 어시스턴트",
-                    text = hud.assistantText,
+                    title = bottomCard.first,
+                    text = bottomCard.second,
                     // 오른쪽 촬영 버튼과 겹치지 않게 비켜 둔다.
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -163,6 +168,7 @@ private fun ModeSwitch(mode: Mode, onSelect: (Mode) -> Unit, modifier: Modifier 
     Row(modifier.background(CardFill, PillShape).border(1.dp, CardLine, PillShape).padding(4.dp)) {
         ModeOption("질문", selected = mode == Mode.Ask, onClick = { onSelect(Mode.Ask) })
         ModeOption("글자 번역", selected = mode == Mode.TranslateText, onClick = { onSelect(Mode.TranslateText) })
+        ModeOption("대화 번역", selected = mode == Mode.Conversation, onClick = { onSelect(Mode.Conversation) })
     }
 }
 
@@ -247,8 +253,13 @@ private fun statusLabel(status: Status): String = when (status) {
 private fun hint(status: Status, mode: Mode): String = when (status) {
     Status.Off -> "AI가 꺼져 있습니다. 위의 AI 활성화를 누르세요"
     Status.Connecting -> "AI에 연결하고 있습니다"
-    Status.Idle -> if (mode == Mode.TranslateText) "글자를 비추고 화면을 탭하세요" else "화면을 탭하고 질문하세요"
-    Status.Listening -> "듣고 있습니다. 다 말했으면 탭하세요"
+    Status.Idle -> when (mode) {
+        Mode.Ask -> "화면을 탭하고 질문하세요"
+        Mode.TranslateText -> "글자를 비추고 화면을 탭하세요"
+        Mode.Conversation -> "탭하면 상대의 말을 한국어로 번역합니다"
+    }
+    Status.Listening ->
+        if (mode == Mode.Conversation) "번역하고 있습니다. 탭하면 멈춥니다" else "듣고 있습니다. 다 말했으면 탭하세요"
     Status.Thinking -> "답을 준비하고 있습니다"
     Status.Speaking -> "탭하면 답을 멈춥니다"
     Status.Error -> "탭하면 다시 시도합니다"

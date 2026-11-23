@@ -96,6 +96,8 @@ class MainActivity : ComponentActivity() {
     private fun selectMode(selected: Mode) {
         mode = selected
         session?.mode = selected
+        // 대화 번역은 상대의 말을 들어야 하므로 이어폰이 아니라 기기 마이크로 듣는다.
+        mic.useHeadsetMic = selected != Mode.Conversation
     }
 
     private fun openSettings() {

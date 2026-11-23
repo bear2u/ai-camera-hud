@@ -15,6 +15,10 @@ class MicRecorder(private val bluetooth: BluetoothMicRoute? = null) : MicSource 
     @Volatile
     private var active: AudioRecord? = null
 
+    /** false 면 블루투스 이어폰이 있어도 기기 마이크를 쓴다. 상대의 말을 들을 때 쓴다. */
+    @Volatile
+    var useHeadsetMic = true
+
     @SuppressLint("MissingPermission")
     override fun start(onChunk: (ByteArray) -> Unit) {
         stop()
@@ -22,7 +26,7 @@ class MicRecorder(private val bluetooth: BluetoothMicRoute? = null) : MicSource 
         val rate = if (halve) TARGET_RATE * 2 else TARGET_RATE
         val chunkBytes = rate * 2 / 10
         // 블루투스 이어폰 마이크는 통화용 입력으로 열어야 잡힌다.
-        val source = if (bluetooth?.enable() == true) {
+        val source = if (useHeadsetMic && bluetooth?.enable() == true) {
             MediaRecorder.AudioSource.VOICE_COMMUNICATION
         } else {
             MediaRecorder.AudioSource.VOICE_RECOGNITION

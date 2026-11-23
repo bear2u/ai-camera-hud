@@ -100,4 +100,6 @@ object ClientEvents {
     private const val TRANSLATION_INSTRUCTIONS =
         "너는 통역기다. 들리는 말을 한국어로 번역한 문장만 출력해라. 대답하거나 설명하거나 질문에 답하지 마라. " +
             "들리는 말이 이미 한국어면 그대로 받아 적어라. 알아들을 수 없으면 아무것도 출력하지 마라."
+
+    fun clearInputAudio(): String = buildJsonObject { put("type", "input_audio_buffer.clear") }.toString()
 }

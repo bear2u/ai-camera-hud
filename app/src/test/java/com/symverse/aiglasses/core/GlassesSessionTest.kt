@@ -310,4 +310,99 @@ class GlassesSessionTest {
 
         assertEquals(HudState(status = Status.Idle, translationText = "EXIT → 출구"), session.hud)
     }
+
+    private fun startConversation() {
+        connect()
+        session.mode = Mode.Conversation
+        session.tap()
+    }
+
+    @Test
+    fun shouldSwitchSessionToTranslationAndStreamMicWhenConversationStarts() {
+        startConversation()
+
+        assertEquals(HudState(status = Status.Listening), session.hud)
+        assertEquals(ClientEvents.conversationTranslationUpdate(), transport.sent.last())
+        assertTrue(mic.running)
+
+        mic.emit(byteArrayOf(1, 2, 3))
+
+        assertEquals(ClientEvents.audioAppend(byteArrayOf(1, 2, 3)), transport.sent.last())
+    }
+
+    @Test
+    fun shouldAppendTranslatedCaptionPerTurnAndKeepListening() {
+        startConversation()
+
+        receive("""{"type":"response.output_text.delta","delta":"실례지만, "}""")
+        receive("""{"type":"response.output_text.delta","delta":"역이 어디죠?"}""")
+        receive("""{"type":"response.done"}""")
+
+        assertEquals(HudState(status = Status.Listening, captions = listOf("실례지만, 역이 어디죠?")), session.hud)
+
+        receive("""{"type":"response.output_text.delta","delta":"감사합니다."}""")
+        receive("""{"type":"response.done"}""")
+
+        assertEquals(listOf("실례지만, 역이 어디죠?", "감사합니다."), session.hud.captions)
+        assertTrue(mic.running)
+    }
+
+    @Test
+    fun shouldKeepOnlyRecentCaptionLines() {
+        startConversation()
+
+        listOf("하나", "둘", "셋", "넷").forEach {
+            receive("""{"type":"response.output_text.delta","delta":"$it"}""")
+            receive("""{"type":"response.done"}""")
+        }
+
+        assertEquals(listOf("둘", "셋", "넷"), session.hud.captions)
+    }
+
+    @Test
+    fun shouldRestoreAssistantSessionWhenConversationStops() {
+        startConversation()
+        receive("""{"type":"response.output_text.delta","delta":"안녕하세요."}""")
+        receive("""{"type":"response.done"}""")
+
+        session.tap()
+
+        assertFalse(mic.running)
+        assertEquals(Status.Idle, session.hud.status)
+        assertEquals(listOf("안녕하세요."), session.hud.captions)
+        assertEquals(listOf("input_audio_buffer.clear", "session.update"), sentTypes().takeLast(2))
+        assertEquals(transport.sent.first(), transport.sent.last())
+
+        session.mode = Mode.Ask
+        session.tap()
+        session.tap()
+
+        assertEquals(ClientEvents.responseCreate(listOf("audio")), transport.sent.last())
+    }
+
+    @Test
+    fun shouldEndConversationWhenApiErrorArrives() {
+        startConversation()
+
+        receive("""{"type":"error","error":{"message":"oops"}}""")
+
+        assertEquals(Status.Idle, session.hud.status)
+        assertFalse(mic.running)
+
+        session.mode = Mode.Ask
+        session.tap()
+        session.tap()
+
+        assertEquals(Status.Thinking, session.hud.status)
+    }
+
+    @Test
+    fun shouldIgnoreLateTranslationAfterConversationStops() {
+        startConversation()
+        session.tap()
+
+        receive("""{"type":"response.output_text.delta","delta":"늦게 온 번역"}""")
+
+        assertEquals(HudState(status = Status.Idle), session.hud)
+    }
 }
