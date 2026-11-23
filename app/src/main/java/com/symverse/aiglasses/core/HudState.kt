@@ -10,5 +10,6 @@ data class HudState(
     val status: Status = Status.Connecting,
     val userText: String = "",
     val assistantText: String = "",
+    val translationText: String = "",
     val error: String? = null,
 )

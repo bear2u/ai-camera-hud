@@ -117,7 +117,7 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 
 ### 4단계: 글자 번역
 - [x] shouldSendFrameWithTranslateInstructionAndTextOnlyResponse
-- [ ] shouldShowTranslationTextOnHud
+- [x] shouldShowTranslationTextOnHud
 - [ ] 모드 전환 UI와 번역 카드, 실기기 확인
 
 ### 5단계: 음성으로 촬영

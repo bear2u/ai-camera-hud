@@ -130,6 +130,7 @@ class GlassesSession(
         when (val received = ServerEvent.decode(event)) {
             is ServerEvent.AudioTranscriptDelta ->
                 hud = hud.copy(assistantText = hud.assistantText + received.text)
+            is ServerEvent.TextDelta -> hud = hud.copy(translationText = hud.translationText + received.text)
             is ServerEvent.InputTranscript -> hud = hud.copy(userText = received.text)
             is ServerEvent.ResponseDone -> hud = hud.copy(status = Status.Idle)
             // 질문 중이 아닐 때 오는 오류(잘못된 키 등)는 연결 자체의 문제다.

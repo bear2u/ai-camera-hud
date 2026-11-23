@@ -297,4 +297,17 @@ class GlassesSessionTest {
         assertEquals(listOf("text"), response.getValue("output_modalities").jsonArray.map { it.jsonPrimitive.content })
         assertTrue(response.getValue("instructions").jsonPrimitive.content.contains("한국어로 번역"))
     }
+
+    @Test
+    fun shouldShowTranslationTextOnHud() {
+        connect()
+        session.mode = Mode.TranslateText
+        session.tap()
+
+        receive("""{"type":"response.output_text.delta","delta":"EXIT → "}""")
+        receive("""{"type":"response.output_text.delta","delta":"출구"}""")
+        receive("""{"type":"response.done"}""")
+
+        assertEquals(HudState(status = Status.Idle, translationText = "EXIT → 출구"), session.hud)
+    }
 }
