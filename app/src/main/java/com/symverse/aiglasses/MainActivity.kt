@@ -18,6 +18,8 @@ import com.symverse.aiglasses.audio.MicRecorder
 import com.symverse.aiglasses.audio.PcmPlayer
 import com.symverse.aiglasses.camera.CameraFrameSource
 import com.symverse.aiglasses.core.AppSettings
+import com.symverse.aiglasses.core.CaptureActions
+import com.symverse.aiglasses.core.CaptureState
 import com.symverse.aiglasses.core.GlassesSession
 import com.symverse.aiglasses.core.HudState
 import com.symverse.aiglasses.core.Mode
@@ -32,8 +34,10 @@ class MainActivity : ComponentActivity() {
     private var settings by mutableStateOf(AppSettings())
     private var showSettings by mutableStateOf(false)
     private var mode by mutableStateOf(Mode.Ask)
+    private var capture by mutableStateOf(CaptureState())
 
     private lateinit var camera: CameraFrameSource
+    private lateinit var captureActions: CaptureActions
     private lateinit var settingsRepository: SettingsRepository
     private val mic = MicRecorder()
     private val player by lazy { PcmPlayer() }
@@ -52,6 +56,7 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         WindowCompat.getInsetsController(window, window.decorView).hide(WindowInsetsCompat.Type.systemBars())
         camera = CameraFrameSource(applicationContext)
+        captureActions = CaptureActions(camera) { capture = it }
         settingsRepository = SettingsRepository(PrefsKeyValueStore(applicationContext))
         settings = settingsRepository.load()
         setContent {
@@ -63,6 +68,9 @@ class MainActivity : ComponentActivity() {
                 onOpenSettings = ::openSettings,
                 mode = mode,
                 onSelectMode = ::selectMode,
+                capture = capture,
+                onTakePhoto = { captureActions.takePhoto() },
+                onToggleVideo = { captureActions.toggleVideo() },
             )
             if (showSettings) {
                 BackHandler(onBack = ::closeSettings)

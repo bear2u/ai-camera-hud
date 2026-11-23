@@ -40,7 +40,7 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 | 보고 묻기 | 탭 → 듣기, 다시 탭 → 프레임 1장 + 음성 전송 → 음성 답 + HUD 자막, 말하는 중 탭 → 중단 | 어시스턴트 |
 | 글자 번역 | 탭 → 프레임 1장 + "보이는 글자를 한국어로 번역" 지시 → HUD 텍스트 (`response.create`에 `output_modalities: ["text"]`) | 어시스턴트 |
 | 대화 번역 | 탭 → 계속 듣기, 상대 말이 한국어 자막으로 흐름, 다시 탭 → 정지 | 번역 전용 |
-| 음성 촬영 | 보고 묻기에서 "사진 찍어줘 / 동영상 찍어줘 / 그만" → `tools`: `take_photo`, `start_video`, `stop_video` → `function_call_output` | 어시스턴트 |
+| 촬영 | 오른쪽 사진·동영상 버튼으로 갤러리에 저장 (음성 명령 촬영은 하지 않음) | 없음 |
 
 ### 구조 (단일 모듈 `app`, 패키지 `com.symverse.aiglasses`)
 - `core/` — 순수 Kotlin, JVM 단위 테스트 대상
@@ -122,14 +122,11 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [x] 실서버 스모크 테스트로 음성 세션의 텍스트 전용 응답 확인 ("EMERGENCY EXIT → 비상구", 오디오 0바이트)
 - [ ] 실기기에서 글자 번역 확인 (폰이 잠겨 있어 못 함. 설정 화면에 키 입력도 필요)
 
-### 5단계: 음성으로 촬영
-- [ ] shouldRegisterCaptureToolsInSessionUpdate
-- [ ] shouldDecodeFunctionCallItem
-- [ ] shouldTakePhotoAndReturnFunctionOutputOnTakePhotoCall
-- [ ] shouldStartAndStopVideoOnToolCalls
-- [ ] shouldShowRecordingIndicatorWhileRecording
-- [ ] shouldReturnFailureOutputWhenCaptureFails
-- [ ] `CameraXCaptureController`, 실기기 확인. 동영상 오디오 녹음과 음성 명령용 마이크가 함께 도는지 확인하고, 안 되면 1차는 무음 동영상으로 한다
+### 5단계: 촬영 버튼 (음성 촬영은 하지 않기로 함, 2026-11-23)
+- [x] 화면 오른쪽 사진·동영상 버튼. `CaptureActionsTest` 5개: shouldReportSavedPhoto, shouldReportPhotoFailure, shouldStartRecordingOnFirstVideoToggle, shouldStopAndReportSavedVideoOnSecondToggle, shouldReportVideoFailureAndAllowRecordingAgain
+- [x] CameraX `ImageCapture`/`VideoCapture`로 갤러리(Pictures/AIGlasses, Movies/AIGlasses)에 저장. 사진은 1920x1440(AI 전송용 프레임과 같은 캡처를 쓴다)
+- [x] 실기기(SM-S938N)에서 사진 1장, 동영상 1개(1920x1080, 약 6초) 저장 확인
+- [ ] 동영상 녹화 중 AI에게 말로 질문했을 때 두 마이크가 함께 도는지 확인 (사용자)
 
 ### 6단계: 대화 번역 자막
 - [ ] 번역 엔드포인트가 한국어(`ko`)를 받는지 실제 연결로 확인. 안 되면 이 단계 테스트를 일반 세션 방식으로 바꾼다

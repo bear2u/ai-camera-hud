@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -34,6 +35,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.symverse.aiglasses.core.CaptureState
 import com.symverse.aiglasses.core.HudState
 import com.symverse.aiglasses.core.Mode
 import com.symverse.aiglasses.core.Status
@@ -50,6 +52,9 @@ fun GlassesScreen(
     onOpenSettings: () -> Unit,
     mode: Mode,
     onSelectMode: (Mode) -> Unit,
+    capture: CaptureState,
+    onTakePhoto: () -> Unit,
+    onToggleVideo: () -> Unit,
 ) {
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (surfaceRequest != null) {
@@ -67,13 +72,25 @@ fun GlassesScreen(
                 if (hud.userText.isNotBlank()) TextCard(title = "나", text = hud.userText)
                 if (hud.translationText.isNotBlank()) TextCard(title = "글자 번역", text = hud.translationText)
                 hud.error?.let { TextCard(title = "오류", text = it, line = Alert) }
+                capture.message?.let { TextCard(title = "촬영", text = it) }
+            }
+            Column(
+                Modifier.align(Alignment.CenterEnd).width(CaptureColumnWidth),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                PillButton("사진", onClick = onTakePhoto, modifier = Modifier.fillMaxWidth())
+                RecordButton(recording = capture.recording, onClick = onToggleVideo)
             }
             ModeSwitch(mode = mode, onSelect = onSelectMode, modifier = Modifier.align(Alignment.TopCenter))
             if (hud.assistantText.isNotBlank()) {
                 TextCard(
                     title = "AI 어시스턴트",
                     text = hud.assistantText,
-                    modifier = Modifier.align(Alignment.BottomEnd).fillMaxWidth(0.46f),
+                    // 오른쪽 촬영 버튼과 겹치지 않게 비켜 둔다.
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = CaptureColumnWidth + 12.dp)
+                        .fillMaxWidth(0.46f),
                 )
             }
             Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -95,6 +112,28 @@ private fun StatusCard(status: Status) {
         Box(Modifier.size(8.dp).background(statusColor(status), CircleShape))
         BasicText("AI Camera", style = BodyStyle.copy(fontWeight = FontWeight.SemiBold))
         BasicText(statusLabel(status), style = TitleStyle)
+    }
+}
+
+private val CaptureColumnWidth = 112.dp
+
+/** 동영상 녹화를 시작하고 멈춘다. 녹화 중에는 빨갛게 표시한다. */
+@Composable
+private fun RecordButton(recording: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(PillShape)
+            .background(if (recording) Color(0xE6B3261E) else CardFill, PillShape)
+            .border(1.dp, if (recording) Alert else CardLine, PillShape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .heightIn(min = 48.dp)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+    ) {
+        Box(Modifier.size(10.dp).background(if (recording) Ink else Alert, if (recording) RoundedCornerShape(2.dp) else CircleShape))
+        BasicText(if (recording) "녹화 중지" else "동영상", style = BodyStyle.copy(fontWeight = FontWeight.SemiBold))
     }
 }
 
