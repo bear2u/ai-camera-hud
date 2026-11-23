@@ -60,7 +60,7 @@ import com.symverse.aiglasses.core.Mode
 import com.symverse.aiglasses.core.Speaker
 import com.symverse.aiglasses.core.Status
 
-private val CaptureColumnWidth = 112.dp
+private val RecordingFill = Color(0xE6B3261E)
 private val BubbleShape = RoundedCornerShape(12.dp)
 private val OtherBubble = Color(0x33FFFFFF)
 
@@ -106,19 +106,29 @@ fun GlassesScreen(
                 )
             }
             // HUD를 숨겨도 촬영 버튼, 촬영 결과 알림, HUD 버튼은 남긴다.
-            Column(
-                Modifier.align(Alignment.CenterEnd).width(CaptureColumnWidth),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                PillButton("사진", onClick = onTakePhoto, modifier = Modifier.fillMaxWidth())
-                RecordButton(recording = capture.recording, onClick = onToggleVideo)
+            Column(Modifier.align(Alignment.CenterEnd), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                IconButton(HudIcon.Camera, "사진 촬영", onClick = onTakePhoto)
+                if (capture.recording) {
+                    IconButton(HudIcon.Stop, "녹화 중지", onClick = onToggleVideo, fill = RecordingFill, line = Alert)
+                } else {
+                    IconButton(HudIcon.Record, "동영상 녹화", onClick = onToggleVideo, tint = Alert)
+                }
             }
             capture.message?.let { CaptureNotice(it, Modifier.align(Alignment.BottomEnd)) }
-            Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                PillButton(if (hudVisible) "HUD 숨기기" else "HUD 보기", onClick = { hudVisible = !hudVisible })
+            Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (hudVisible) {
-                    AiToggle(on = hud.status != Status.Off, onClick = onToggleAi)
-                    PillButton("설정", onClick = onOpenSettings)
+                    IconButton(HudIcon.EyeOff, "HUD 숨기기", onClick = { hudVisible = false })
+                    val aiOn = hud.status != Status.Off
+                    IconButton(
+                        HudIcon.Power,
+                        if (aiOn) "AI 끄기" else "AI 켜기",
+                        onClick = onToggleAi,
+                        fill = if (aiOn) CardFill else Primary,
+                        tint = if (aiOn) Live else Ink,
+                    )
+                    IconButton(HudIcon.Gear, "설정", onClick = onOpenSettings)
+                } else {
+                    IconButton(HudIcon.Eye, "HUD 보기", onClick = { hudVisible = true })
                 }
             }
         }
@@ -147,24 +157,22 @@ private fun ChatPanel(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (!typing) {
-            StatusRow(hud.status)
-            ModeSwitch(mode = mode, onSelect = onSelectMode)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.size(10.dp).background(statusColor(hud.status), CircleShape))
+                ModeSwitch(mode = mode, onSelect = onSelectMode)
+            }
         }
         ChatLog(hud.entries, emptyHint = hint(hud.status, mode), modifier = Modifier.weight(1f).fillMaxWidth())
         hud.error?.let { BasicText("오류: $it", style = TitleStyle.copy(color = Alert), maxLines = 3) }
-        if (hud.entries.isNotEmpty() && !typing) BasicText(hint(hud.status, mode), style = TitleStyle, maxLines = 1)
+        // 오류는 바로 위 줄에 사유가 나오므로 상태 글자를 또 쓰지 않는다.
+        if (hud.status != Status.Idle && hud.status != Status.Error) {
+            BasicText(statusLabel(hud.status), style = TitleStyle, maxLines = 1)
+        }
         InputRow(status = hud.status, mode = mode, onSendText = onSendText, onMic = onMic)
     }
 }
 
-@Composable
-private fun StatusRow(status: Status) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Box(Modifier.size(8.dp).background(statusColor(status), CircleShape))
-        BasicText("AI Camera", style = BodyStyle.copy(fontWeight = FontWeight.SemiBold))
-        BasicText(statusLabel(status), style = TitleStyle)
-    }
-}
+
 
 /** 대화 기록. 맨 아래를 보고 있을 때만 새 글을 따라 내려가서, 위로 올려 읽는 중에는 움직이지 않는다. */
 @Composable
@@ -242,8 +250,23 @@ private fun InputRow(status: Status, mode: Mode, onSendText: (String) -> Unit, o
                 }
             },
         )
-        PillButton("보내기", onClick = send, primary = true)
-        PillButton(micLabel(status, mode), onClick = onMic)
+        IconButton(HudIcon.Send, "보내기", onClick = send, fill = Primary)
+        MicButton(status = status, mode = mode, onClick = onMic)
+    }
+}
+
+/** 말하기 버튼. 화면 탭과 같은 일을 하고, 지금 누르면 무슨 일이 일어나는지 아이콘으로 보여 준다. */
+@Composable
+private fun MicButton(status: Status, mode: Mode, onClick: () -> Unit) {
+    when (status) {
+        Status.Listening, Status.Speaking ->
+            IconButton(HudIcon.Stop, micLabel(status, mode), onClick = onClick, fill = RecordingFill, line = Alert)
+        Status.Thinking, Status.Connecting -> IconButton(HudIcon.Dots, micLabel(status, mode), onClick = onClick, tint = InkDim)
+        Status.Idle, Status.Off, Status.Error -> IconButton(
+            if (mode == Mode.TranslateText) HudIcon.Shutter else HudIcon.Mic,
+            micLabel(status, mode),
+            onClick = onClick,
+        )
     }
 }
 
@@ -256,25 +279,7 @@ private fun CaptureNotice(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** 동영상 녹화를 시작하고 멈춘다. 녹화 중에는 빨갛게 표시한다. */
-@Composable
-private fun RecordButton(recording: Boolean, onClick: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(PillShape)
-            .background(if (recording) Color(0xE6B3261E) else CardFill, PillShape)
-            .border(1.dp, if (recording) Alert else CardLine, PillShape)
-            .clickable(role = Role.Button, onClick = onClick)
-            .heightIn(min = 48.dp)
-            .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-    ) {
-        Box(Modifier.size(10.dp).background(if (recording) Ink else Alert, if (recording) RoundedCornerShape(2.dp) else CircleShape))
-        BasicText(if (recording) "녹화 중지" else "동영상", style = BodyStyle.copy(fontWeight = FontWeight.SemiBold))
-    }
-}
+
 
 /** 말하기 버튼과 화면 탭이 할 일을 고른다. 좁으면 옆으로 밀어 볼 수 있다. */
 @Composable
@@ -287,9 +292,9 @@ private fun ModeSwitch(mode: Mode, onSelect: (Mode) -> Unit, modifier: Modifier 
             .padding(4.dp),
     ) {
         ModeOption("질문", selected = mode == Mode.Ask, onClick = { onSelect(Mode.Ask) })
-        ModeOption("글자 번역", selected = mode == Mode.TranslateText, onClick = { onSelect(Mode.TranslateText) })
-        ModeOption("대화 번역", selected = mode == Mode.Conversation, onClick = { onSelect(Mode.Conversation) })
-        ModeOption("문제 풀이", selected = mode == Mode.Solve, onClick = { onSelect(Mode.Solve) })
+        ModeOption("번역", selected = mode == Mode.TranslateText, onClick = { onSelect(Mode.TranslateText) })
+        ModeOption("통역", selected = mode == Mode.Conversation, onClick = { onSelect(Mode.Conversation) })
+        ModeOption("풀이", selected = mode == Mode.Solve, onClick = { onSelect(Mode.Solve) })
     }
 }
 
@@ -308,24 +313,7 @@ private fun ModeOption(label: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** AI 연결을 켜고 끄는 버튼. */
-@Composable
-private fun AiToggle(on: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier
-            .clip(PillShape)
-            .background(if (on) CardFill else Primary, PillShape)
-            .border(1.dp, CardLine, PillShape)
-            .clickable(role = Role.Button, onClick = onClick)
-            .heightIn(min = 48.dp)
-            .padding(horizontal = 18.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Box(Modifier.size(10.dp).background(if (on) Alert else Ink, if (on) RoundedCornerShape(2.dp) else CircleShape))
-        BasicText(if (on) "AI 중지" else "AI 활성화", style = BodyStyle.copy(fontWeight = FontWeight.SemiBold))
-    }
-}
+
 
 private fun speakerLabel(speaker: Speaker): String = when (speaker) {
     Speaker.User -> "나"
@@ -364,20 +352,19 @@ private fun statusLabel(status: Status): String = when (status) {
 }
 
 private fun hint(status: Status, mode: Mode): String = when (status) {
-    Status.Off -> "AI가 꺼져 있습니다. 위의 AI 활성화를 누르세요"
+    Status.Off -> "AI가 꺼져 있습니다. 오른쪽 위 전원 버튼을 누르세요"
     Status.Connecting -> "AI에 연결하고 있습니다"
     Status.Idle -> when (mode) {
-        Mode.Ask -> "글로 묻거나, 말하기를 누르고 질문하세요"
-        Mode.TranslateText -> "글자를 비추고 번역을 누르세요"
-        Mode.Conversation -> "시작을 누르면 상대의 말을 한국어로 번역합니다"
+        Mode.Ask -> "보이는 것에 대해 글이나 말로 물어보세요"
+        Mode.TranslateText -> "글자를 비추고 버튼을 누르면 번역합니다"
+        Mode.Conversation -> "마이크를 누르면 상대의 말을 한국어로 통역합니다"
         Mode.Solve -> "문제를 크게 비추고 글이나 말로 물어보세요"
     }
     Status.Listening -> when (mode) {
-        Mode.Conversation -> "번역하고 있습니다. 중지를 누르면 멈춥니다"
-        Mode.Solve -> "듣고 있습니다. 전송을 누르면 풉니다 (말없이 눌러도 됩니다)"
-        else -> "듣고 있습니다. 다 말했으면 전송을 누르세요"
+        Mode.Conversation -> "통역하고 있습니다"
+        else -> "듣고 있습니다"
     }
     Status.Thinking -> "답을 준비하고 있습니다"
-    Status.Speaking -> "중단을 누르면 답을 멈춥니다"
-    Status.Error -> "재시도를 누르면 다시 연결합니다"
+    Status.Speaking -> "답하고 있습니다"
+    Status.Error -> "마이크 버튼을 누르면 다시 연결합니다"
 }

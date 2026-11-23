@@ -160,6 +160,14 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [x] 실서버 스모크 테스트: 문제 두 개 사진 + 음성 "두 번째 문제만 풀어줘" → "답: 63"
 - [ ] 실기기 확인 (사용자): 교재의 실제 문제를 비췄을 때 읽기와 풀이 정확도. 사진 한 장으로 풀기 때문에 어려운 문제는 틀릴 수 있다
 
+### 채팅창 HUD (2026-11-23 추가)
+- [x] 폰에 저장된 키로 실기기 확인: 질문(음성 턴), 문제 풀이, 글자 질문이 동작하고 답이 표시됨
+- [x] 대화 기록: shouldMovePreviousTurnToHistoryWhenNextTurnStarts, shouldListTurnsInOrderAcrossModes. 음성 질문은 받아 적은 글이 없으면 "(음성 질문)"으로 표시
+- [x] 글자 질문: shouldEncodeTypedTextAsUserMessage, shouldSendFrameAndTypedQuestionAndRequestSpokenAnswer, shouldSolveTypedQuestionAsTextWithHighDetailFrame, shouldIgnoreTypedTextWhenBlankOrBusy, shouldStopLeftoverPlaybackWhenTypedQuestionIsSent
+- [x] 왼쪽 채팅창: 모드 선택(질문/번역/통역/풀이), 위로 올려 볼 수 있는 말풍선 기록, 글자 입력, 보내기·마이크 버튼. 모든 답이 여기에 쌓인다
+- [x] 버튼을 아이콘으로: 보내기, 마이크(듣는 중에는 정지), 사진, 녹화, HUD 보기/숨기기, AI 전원, 설정
+- [ ] 실기기 확인 (사용자): 삼성 키보드가 떴을 때 입력칸이 가려지지 않는지, 긴 답을 위로 올려 읽을 때 스크롤이 자연스러운지
+
 ### 이후 단계 (이번 범위 밖)
 화면 속 사물 위치 라벨(기기 내 사물 검출 + AI 이름 붙이기), 장소 정보(위치 + 지도 API), 웨이크워드, 60분 세션 만료 재연결, 임시 키 백엔드, WebRTC 전송, 오프라인 번역, 텔레프롬프터, 내비게이션.
 
