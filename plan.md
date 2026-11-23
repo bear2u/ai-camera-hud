@@ -84,16 +84,20 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [x] shouldIgnoreUnknownEventType
 
 ### 2단계: 보고 묻기 (`GlassesSessionTest`, 가짜 포트)
-- [ ] shouldConnectAndSendSessionUpdateOnStart
-- [ ] shouldStreamMicAudioWhileListening
-- [ ] shouldSendFrameThenCommitAndRequestResponseOnSecondTap
-- [ ] shouldShowAssistantTranscriptOnHudAsDeltasArrive
-- [ ] shouldPlayAudioDeltasToSink
-- [ ] shouldShowUserTranscriptOnHud
-- [ ] shouldReturnToIdleOnResponseDone
-- [ ] shouldCancelTruncateAndStopPlaybackWhenTappedWhileSpeaking
-- [ ] shouldShowErrorOnHudWhenTransportFails
-- [ ] shouldShowErrorWhenApiKeyMissing
+- [x] shouldConnectAndSendSessionUpdateOnStart
+- [x] shouldStreamMicAudioWhileListening
+- [x] shouldSendFrameThenCommitAndRequestResponseOnSecondTap
+- [x] shouldShowAssistantTranscriptOnHudAsDeltasArrive
+- [x] shouldPlayAudioDeltasToSink
+- [x] shouldShowUserTranscriptOnHud
+- [x] shouldReturnToIdleOnResponseDone
+- [x] shouldCancelTruncateAndStopPlaybackWhenTappedWhileSpeaking
+- [x] shouldShowErrorOnHudWhenTransportFails
+- [x] shouldShowErrorWhenApiKeyMissing
+- [x] shouldStopLeftoverPlaybackInsteadOfListeningWhenTappedAfterResponseDone (추가: 응답 생성은 재생보다 먼저 끝난다)
+- [x] shouldReconnectWhenTappedAfterError (추가)
+- [x] shouldShowApiErrorAndReturnToIdle (추가)
+- [x] shouldClearPreviousTextsWhenListeningStarts (추가)
 
 ### 3단계: 어댑터와 화면, 첫 실기기 확인 (수동 검증)
 - [ ] `OkHttpRealtimeTransport`, `CameraXFrameSource`, `MicRecorder`, `PcmPlayer`
