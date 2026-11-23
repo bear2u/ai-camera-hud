@@ -72,6 +72,12 @@ fun GlassesScreen(
                 .safeDrawingPadding()
                 .padding(16.dp),
         ) {
+            // HUD를 숨겨도 촬영 결과 알림과 촬영 버튼은 남긴다.
+            if (!hudVisible) {
+                capture.message?.let {
+                    TextCard(title = "촬영", text = it, modifier = Modifier.align(Alignment.TopStart).fillMaxWidth(0.42f))
+                }
+            }
             if (hudVisible) Column(Modifier.align(Alignment.TopStart), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 val cardWidth = Modifier.fillMaxWidth(0.42f)
                 // 상태와 모드 전환은 왼쪽에 붙여 오른쪽 버튼들과 겹치지 않게 한다.
@@ -84,7 +90,7 @@ fun GlassesScreen(
                 hud.error?.let { TextCard(title = "오류", text = it, modifier = cardWidth, line = Alert) }
                 capture.message?.let { TextCard(title = "촬영", text = it, modifier = cardWidth) }
             }
-            if (hudVisible) Column(
+            Column(
                 Modifier.align(Alignment.CenterEnd).width(CaptureColumnWidth),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
