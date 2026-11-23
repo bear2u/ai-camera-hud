@@ -164,4 +164,15 @@ class RealtimeEventsTest {
     fun shouldDecodeSessionCreated() {
         assertEquals(ServerEvent.SessionCreated, ServerEvent.decode("""{"type":"session.created","session":{"id":"sess_1"}}"""))
     }
+
+    @Test
+    fun shouldEncodeTypedTextAsUserMessage() {
+        val item = parse(ClientEvents.textItem("이게 뭐야?")).obj("item")
+
+        assertEquals("message", item.str("type"))
+        assertEquals("user", item.str("role"))
+        val content = item.getValue("content").jsonArray.single().jsonObject
+        assertEquals("input_text", content.str("type"))
+        assertEquals("이게 뭐야?", content.str("text"))
+    }
 }

@@ -32,6 +32,8 @@ class GlassesSession(
     /** 이번 듣기에서 서버로 보낸 소리가 있으면 true. */
     private var audioSent = false
 
+    private var typedQuestion = ""
+
     private var playingItemId: String? = null
 
     /** 끊은 응답의 늦게 도착한 음성을 버린다. */
@@ -89,7 +91,7 @@ class GlassesSession(
 
     private fun startListening() {
         audioSent = false
-        hud = HudState(status = Status.Listening)
+        hud = nextTurn(Status.Listening)
         mic.start(::onMicChunk)
     }
 
@@ -116,6 +118,10 @@ class GlassesSession(
         return true
     }
 
+    /** 지금 턴을 기록으로 넘기고 새 턴을 시작한다. */
+    private fun nextTurn(status: Status): HudState =
+        HudState(status = status, history = hud.entries.takeLast(MAX_HISTORY))
+
     private fun startConversation() {
         transport.send(ClientEvents.conversationTranslationUpdate())
         conversing = true
@@ -141,7 +147,7 @@ class GlassesSession(
 
     private fun finishSolveListening() {
         mic.stop()
-        hud = hud.copy(status = Status.Thinking)
+        hud = hud.copy(status = Status.Thinking, userText = if (audioSent) VOICE_QUESTION else "(보이는 문제 풀기)")
         frames.capture(::onSolveFrame)
     }
 
@@ -162,7 +168,7 @@ class GlassesSession(
     /** 사진 한 장만 보내 번역을 글자로 받는다. */
     private fun startTextTranslation() {
         solving = false
-        hud = HudState(status = Status.Thinking)
+        hud = nextTurn(Status.Thinking)
         frames.capture(::onTranslationFrame)
     }
 
@@ -177,9 +183,33 @@ class GlassesSession(
         transport.send(ClientEvents.responseCreate(listOf("text"), TRANSLATE_INSTRUCTIONS))
     }
 
+    /** 채팅창에 글자로 입력한 질문을 지금 보이는 장면과 함께 보낸다. */
+    @Synchronized
+    fun sendText(text: String) {
+        if (text.isBlank() || hud.status != Status.Idle) return
+        stopPlayback()
+        typedQuestion = text.trim()
+        solving = mode == Mode.Solve
+        hud = nextTurn(Status.Thinking).copy(userText = typedQuestion)
+        frames.capture(::onTypedQuestionFrame)
+    }
+
+    @Synchronized
+    private fun onTypedQuestionFrame(jpeg: ByteArray?) {
+        if (hud.status != Status.Thinking) return
+        if (jpeg != null) transport.send(ClientEvents.imageItem(jpeg, detail = if (solving) "high" else "low"))
+        transport.send(ClientEvents.textItem(typedQuestion))
+        playbackMuted = false
+        transport.send(
+            if (solving) ClientEvents.responseCreate(listOf("text"), SOLVE_INSTRUCTIONS)
+            else ClientEvents.responseCreate(listOf("audio")),
+        )
+    }
+
     private fun finishListening() {
         mic.stop()
-        hud = hud.copy(status = Status.Thinking)
+        // 받아 적은 글이 오면 바뀐다. 받아쓰기 권한이 없는 계정에서는 이대로 남는다.
+        hud = hud.copy(status = Status.Thinking, userText = VOICE_QUESTION)
         frames.capture(::onFrame)
     }
 
@@ -245,10 +275,12 @@ class GlassesSession(
     }
 
     private companion object {
+        const val VOICE_QUESTION = "(음성 질문)"
         const val MAX_CAPTIONS = 3
+        const val MAX_HISTORY = 60
         const val MISSING_KEY = "API 키가 없습니다. 오른쪽 위 설정에서 입력하세요."
         const val SOLVE_INSTRUCTIONS =
-            "방금 받은 사진에 있는 문제를 풀어라. 사용자가 방금 말로 요청한 것이 있으면 그 요청대로 답하고" +
+            "방금 받은 사진에 있는 문제를 풀어라. 사용자가 방금 말이나 글로 요청한 것이 있으면 그 요청대로 답하고" +
                 "(예: 특정 번호만, 힌트만, 개념 설명, 앞선 풀이에 대한 질문), 말이 없거나 알아들을 수 없으면 보이는 문제를 풀어라. " +
                 "문제를 풀 때는 먼저 '답: ...'을 한 줄로 쓰고, 이어서 '풀이:' 아래에 핵심 단계를 " +
                 "번호를 붙여 짧게 써라. 한국어로 쓰고, 수식은 LaTeX나 마크다운 없이 일반 문자(예: x^2, √, ×, ÷)로 써라. " +

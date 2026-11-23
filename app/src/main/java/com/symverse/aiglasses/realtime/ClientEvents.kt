@@ -103,4 +103,18 @@ object ClientEvents {
             "들리는 말이 이미 한국어면 그대로 받아 적어라. 알아들을 수 없으면 아무것도 출력하지 마라."
 
     fun clearInputAudio(): String = buildJsonObject { put("type", "input_audio_buffer.clear") }.toString()
+
+    fun textItem(text: String): String = buildJsonObject {
+        put("type", "conversation.item.create")
+        putJsonObject("item") {
+            put("type", "message")
+            put("role", "user")
+            putJsonArray("content") {
+                add(buildJsonObject {
+                    put("type", "input_text")
+                    put("text", text)
+                })
+            }
+        }
+    }.toString()
 }

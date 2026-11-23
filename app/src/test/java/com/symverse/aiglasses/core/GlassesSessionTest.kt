@@ -211,14 +211,21 @@ class GlassesSessionTest {
     }
 
     @Test
-    fun shouldClearPreviousTextsWhenListeningStarts() {
+    fun shouldMovePreviousTurnToHistoryWhenNextTurnStarts() {
         ask()
+        receive("""{"type":"conversation.item.input_audio_transcription.completed","transcript":"이게 뭐야?"}""")
         receive("""{"type":"response.output_audio_transcript.delta","delta":"컵이에요"}""")
         receive("""{"type":"error","error":{"message":"oops"}}""")
 
         session.tap()
 
-        assertEquals(HudState(status = Status.Listening), session.hud)
+        assertEquals(
+            HudState(
+                status = Status.Listening,
+                history = listOf(LogEntry(Speaker.User, "이게 뭐야?"), LogEntry(Speaker.Assistant, "컵이에요")),
+            ),
+            session.hud,
+        )
     }
 
     @Test
@@ -430,7 +437,10 @@ class GlassesSessionTest {
         receive("""{"type":"response.output_text.delta","delta":"풀이: 1) 2x = 8"}""")
         receive("""{"type":"response.done"}""")
 
-        assertEquals(HudState(status = Status.Idle, solutionText = "답: x = 4\n풀이: 1) 2x = 8"), session.hud)
+        assertEquals(
+            HudState(status = Status.Idle, userText = "(음성 질문)", solutionText = "답: x = 4\n풀이: 1) 2x = 8"),
+            session.hud,
+        )
     }
 
     @Test
@@ -469,6 +479,90 @@ class GlassesSessionTest {
         session.tap()
 
         assertEquals(listOf("session.update", "conversation.item.create", "response.create"), sentTypes())
+        assertEquals(HudState(status = Status.Thinking, userText = "(보이는 문제 풀기)"), session.hud)
+    }
+
+    @Test
+    fun shouldListTurnsInOrderAcrossModes() {
+        ask()
+        receive("""{"type":"response.output_audio_transcript.delta","delta":"컵이에요"}""")
+        receive("""{"type":"response.done"}""")
+        session.mode = Mode.TranslateText
+        session.tap()
+        receive("""{"type":"response.output_text.delta","delta":"EXIT → 출구"}""")
+        receive("""{"type":"response.done"}""")
+
+        assertEquals(
+            listOf(
+                LogEntry(Speaker.User, "(음성 질문)"),
+                LogEntry(Speaker.Assistant, "컵이에요"),
+                LogEntry(Speaker.Translation, "EXIT → 출구"),
+            ),
+            session.hud.entries,
+        )
+    }
+
+    @Test
+    fun shouldSendFrameAndTypedQuestionAndRequestSpokenAnswer() {
+        connect()
+
+        session.sendText("  이게 뭐야?  ")
+
+        assertEquals(HudState(status = Status.Thinking, userText = "이게 뭐야?"), session.hud)
+        assertFalse(mic.running)
+        assertEquals(
+            listOf(
+                transport.sent.first(),
+                ClientEvents.imageItem(byteArrayOf(9, 9)),
+                ClientEvents.textItem("이게 뭐야?"),
+                ClientEvents.responseCreate(listOf("audio")),
+            ),
+            transport.sent,
+        )
+    }
+
+    @Test
+    fun shouldSolveTypedQuestionAsTextWithHighDetailFrame() {
+        connect()
+        session.mode = Mode.Solve
+
+        session.sendText("2번만 풀어줘")
+        receive("""{"type":"response.output_text.delta","delta":"답: 63"}""")
+        receive("""{"type":"response.done"}""")
+
+        assertEquals(ClientEvents.imageItem(byteArrayOf(9, 9), detail = "high"), transport.sent[1])
+        assertEquals(ClientEvents.textItem("2번만 풀어줘"), transport.sent[2])
+        val response = Json.parseToJsonElement(transport.sent[3]).jsonObject.getValue("response").jsonObject
+        assertEquals(listOf("text"), response.getValue("output_modalities").jsonArray.map { it.jsonPrimitive.content })
+        assertTrue(response.getValue("instructions").jsonPrimitive.content.contains("문제를 풀"))
+        assertEquals(HudState(status = Status.Idle, userText = "2번만 풀어줘", solutionText = "답: 63"), session.hud)
+    }
+
+    @Test
+    fun shouldIgnoreTypedTextWhenBlankOrBusy() {
+        connect()
+
+        session.sendText("   ")
+
+        assertEquals(Status.Idle, session.hud.status)
+
+        session.tap()
+        session.sendText("듣는 중에 보낸 글")
+
+        assertEquals(Status.Listening, session.hud.status)
+        assertEquals(listOf("session.update"), sentTypes())
+    }
+
+    @Test
+    fun shouldStopLeftoverPlaybackWhenTypedQuestionIsSent() {
+        ask()
+        receive("""{"type":"response.output_audio.delta","item_id":"item_9","delta":"AQID"}""")
+        receive("""{"type":"response.done"}""")
+        sink.playedMs = 800
+
+        session.sendText("다음 질문")
+
+        assertTrue(transport.sent.contains(ClientEvents.truncate("item_9", 800)))
         assertEquals(Status.Thinking, session.hud.status)
     }
 }
