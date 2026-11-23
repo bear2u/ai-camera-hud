@@ -69,19 +69,19 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [x] Gradle 프로젝트 스캐폴딩, 빈 Compose 화면으로 `./gradlew :app:assembleDebug`와 `:app:testDebugUnitTest` 통과 확인 후 커밋
 
 ### 1단계: Realtime 프로토콜 (`RealtimeEventsTest`)
-- [ ] shouldEncodeSessionUpdateWithPcm24kAndNoTurnDetection
-- [ ] shouldEncodeInputTranscriptionInSessionUpdate
-- [ ] shouldEncodeAudioAppendAsBase64
-- [ ] shouldEncodeImageItemAsJpegDataUrl
-- [ ] shouldEncodeCommitAndResponseCreateWithModalities
-- [ ] shouldEncodeCancelAndTruncate
-- [ ] shouldDecodeOutputAudioDelta
-- [ ] shouldDecodeOutputAudioTranscriptDelta
-- [ ] shouldDecodeOutputTextDelta
-- [ ] shouldDecodeInputTranscriptionCompleted
-- [ ] shouldDecodeResponseDone
-- [ ] shouldDecodeErrorEvent
-- [ ] shouldIgnoreUnknownEventType
+- [x] shouldEncodeSessionUpdateWithPcm24kAndNoTurnDetection
+- [x] shouldEncodeInputTranscriptionInSessionUpdate
+- [x] shouldEncodeAudioAppendAsBase64
+- [x] shouldEncodeImageItemAsJpegDataUrl
+- [x] shouldEncodeCommitAndResponseCreateWithModalities
+- [x] shouldEncodeCancelAndTruncate
+- [x] shouldDecodeOutputAudioDelta
+- [x] shouldDecodeOutputAudioTranscriptDelta
+- [x] shouldDecodeOutputTextDelta
+- [x] shouldDecodeInputTranscriptionCompleted
+- [x] shouldDecodeResponseDone
+- [x] shouldDecodeErrorEvent
+- [x] shouldIgnoreUnknownEventType
 
 ### 2단계: 보고 묻기 (`GlassesSessionTest`, 가짜 포트)
 - [ ] shouldConnectAndSendSessionUpdateOnStart
