@@ -4,7 +4,9 @@ import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.net.Uri
 import android.provider.MediaStore
 import android.util.Size
 import androidx.camera.core.CameraSelector
@@ -24,11 +26,13 @@ import androidx.camera.video.Recorder
 import androidx.camera.video.Recording
 import androidx.camera.video.VideoCapture
 import androidx.camera.video.VideoRecordEvent
+import androidx.exifinterface.media.ExifInterface
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.LifecycleOwner
 import com.symverse.aiglasses.core.CaptureController
 import com.symverse.aiglasses.core.FrameSource
+import com.symverse.aiglasses.core.Photo
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -82,7 +86,7 @@ class CameraFrameSource(private val context: Context) : FrameSource, CaptureCont
         }, context.mainExecutor)
     }
 
-    override fun takePhoto(onResult: (saved: Boolean) -> Unit) {
+    override fun takePhoto(onResult: (saved: Photo?) -> Unit) {
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, fileName())
             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
@@ -95,13 +99,38 @@ class CameraFrameSource(private val context: Context) : FrameSource, CaptureCont
         ).build()
         try {
             imageCapture.takePicture(options, executor, object : ImageCapture.OnImageSavedCallback {
-                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) = onResult(true)
+                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                    // 저장은 됐으니, 첨부용 사본을 못 만들어도 빈 사진으로라도 성공을 알린다.
+                    val copy = outputFileResults.savedUri?.let { uri -> runCatching { loadForAi(uri) }.getOrNull() }
+                    onResult(Photo(copy ?: ByteArray(0)))
+                }
 
-                override fun onError(exception: ImageCaptureException) = onResult(false)
+                override fun onError(exception: ImageCaptureException) = onResult(null)
             })
         } catch (e: IllegalStateException) {
-            onResult(false)
+            onResult(null)
         }
+    }
+
+    /** 저장된 사진을 읽어 AI에 보낼 크기로 줄이고 바로 세운다. */
+    private fun loadForAi(uri: Uri): ByteArray? {
+        val resolver = context.contentResolver
+        val degrees = resolver.openInputStream(uri)?.use { stream ->
+            when (ExifInterface(stream).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                else -> 0f
+            }
+        } ?: 0f
+        val bitmap = resolver.openInputStream(uri)?.use(BitmapFactory::decodeStream) ?: return null
+        val scale = minOf(1f, MAX_SIDE.toFloat() / maxOf(bitmap.width, bitmap.height))
+        val matrix = Matrix().apply {
+            postScale(scale, scale)
+            postRotate(degrees)
+        }
+        val upright = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        return ByteArrayOutputStream().also { upright.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray()
     }
 
     @SuppressLint("MissingPermission")

@@ -6,11 +6,11 @@ import org.junit.Test
 
 class CaptureActionsTest {
     private val camera = object : CaptureController {
-        var photoSucceeds = true
+        var photo: Photo? = Photo(byteArrayOf(7, 7))
         var stopRequested = false
         var finishVideo: ((Boolean) -> Unit)? = null
 
-        override fun takePhoto(onResult: (Boolean) -> Unit) = onResult(photoSucceeds)
+        override fun takePhoto(onResult: (Photo?) -> Unit) = onResult(photo)
 
         override fun startVideo(onFinished: (Boolean) -> Unit) {
             finishVideo = onFinished
@@ -26,12 +26,12 @@ class CaptureActionsTest {
     fun shouldReportSavedPhoto() {
         actions.takePhoto()
 
-        assertEquals(CaptureState(recording = false, message = "사진을 저장했습니다."), actions.state)
+        assertEquals(CaptureState(recording = false, message = "사진을 저장했습니다.", photo = camera.photo), actions.state)
     }
 
     @Test
     fun shouldReportPhotoFailure() {
-        camera.photoSucceeds = false
+        camera.photo = null
 
         actions.takePhoto()
 
@@ -71,5 +71,14 @@ class CaptureActionsTest {
         actions.toggleVideo()
 
         assertTrue(actions.state.recording)
+    }
+
+    @Test
+    fun shouldForgetThePhotoWhenCleared() {
+        actions.takePhoto()
+
+        actions.clearPhoto()
+
+        assertEquals(CaptureState(), actions.state)
     }
 }

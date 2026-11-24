@@ -27,6 +27,7 @@ import com.symverse.aiglasses.core.KeyTestResult
 import com.symverse.aiglasses.core.KeyTester
 import com.symverse.aiglasses.core.Mode
 import com.symverse.aiglasses.core.NavHud
+import com.symverse.aiglasses.core.Photo
 import com.symverse.aiglasses.core.NavigationSession
 import com.symverse.aiglasses.audio.VoiceAnnouncer
 import com.symverse.aiglasses.location.DeviceLocation
@@ -43,6 +44,7 @@ class MainActivity : ComponentActivity() {
     private var showSettings by mutableStateOf(false)
     private var mode by mutableStateOf(Mode.Ask)
     private var capture by mutableStateOf(CaptureState())
+    private var attachment by mutableStateOf<Photo?>(null)
     private var keyTest by mutableStateOf<KeyTestResult?>(null)
     private val keyTester = KeyTester(
         open = { OkHttpRealtimeTransport(it.apiKey, it.realtimeUrl) },
@@ -104,6 +106,13 @@ class MainActivity : ComponentActivity() {
                 onTakePhoto = { captureActions.takePhoto() },
                 onToggleVideo = { captureActions.toggleVideo() },
                 onSendText = ::onSendText,
+                attachment = attachment,
+                onAttachPhoto = {
+                    attachment = capture.photo
+                    captureActions.clearPhoto()
+                },
+                onRemoveAttachment = { attachment = null },
+                onSendPhoto = ::onSendPhoto,
                 nav = nav,
                 heading = heading,
                 onStopNavigation = { navigation.stop() },
@@ -131,6 +140,15 @@ class MainActivity : ComponentActivity() {
     /** 길안내 모드에서 입력한 글은 목적지이고, 그 밖에는 AI에게 하는 질문이다. */
     private fun onSendText(text: String) {
         if (mode == Mode.Navigate) navigation.start(text) else session?.sendText(text)
+    }
+
+    /** 첨부한 사진을 보낸다. AI가 다른 일을 하는 중이면 첨부를 그대로 둔다. */
+    private fun onSendPhoto(text: String, translate: Boolean) {
+        val photo = attachment ?: return
+        val current = session ?: return
+        if (current.hud.status != Status.Idle) return
+        current.sendPhoto(photo, text, translate)
+        attachment = null
     }
 
     private fun hasLocationPermission(): Boolean =

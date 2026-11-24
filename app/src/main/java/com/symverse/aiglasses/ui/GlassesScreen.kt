@@ -1,7 +1,9 @@
 package com.symverse.aiglasses.ui
 
 import androidx.camera.compose.CameraXViewfinder
+import android.graphics.BitmapFactory
 import androidx.camera.core.SurfaceRequest
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -47,6 +49,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -62,6 +66,7 @@ import com.symverse.aiglasses.core.LogEntry
 import com.symverse.aiglasses.core.Mode
 import com.symverse.aiglasses.core.NavHud
 import com.symverse.aiglasses.core.NavPhase
+import com.symverse.aiglasses.core.Photo
 import com.symverse.aiglasses.core.Speaker
 import com.symverse.aiglasses.core.Status
 
@@ -87,6 +92,10 @@ fun GlassesScreen(
     onTakePhoto: () -> Unit,
     onToggleVideo: () -> Unit,
     onSendText: (String) -> Unit,
+    attachment: Photo?,
+    onAttachPhoto: () -> Unit,
+    onRemoveAttachment: () -> Unit,
+    onSendPhoto: (text: String, translate: Boolean) -> Unit,
     nav: NavHud,
     heading: Float?,
     onStopNavigation: () -> Unit,
@@ -112,6 +121,9 @@ fun GlassesScreen(
                     mode = mode,
                     onSelectMode = onSelectMode,
                     onSendText = onSendText,
+                    attachment = attachment,
+                    onRemoveAttachment = onRemoveAttachment,
+                    onSendPhoto = onSendPhoto,
                     onMic = onTap,
                     modifier = Modifier.align(Alignment.TopStart).fillMaxHeight().fillMaxWidth(0.46f),
                 )
@@ -125,7 +137,22 @@ fun GlassesScreen(
                     IconButton(HudIcon.Record, "동영상 녹화", onClick = onToggleVideo, tint = Alert)
                 }
             }
-            capture.message?.let { CaptureNotice(it, Modifier.align(Alignment.BottomEnd)) }
+            capture.message?.let { message ->
+                CaptureNotice(
+                    text = message,
+                    // 방금 찍은 사진이 있으면 채팅창에 첨부해 분석이나 번역을 맡길 수 있다.
+                    onAnalyze = if (capture.photo?.jpeg?.isNotEmpty() == true) {
+                        {
+                            hudVisible = true
+                            chatView = ChatView.Shown
+                            onAttachPhoto()
+                        }
+                    } else {
+                        null
+                    },
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                )
+            }
             if (hudVisible && nav.phase != NavPhase.Off) {
                 NavCard(
                     nav = nav,
@@ -175,6 +202,9 @@ private fun ChatPanel(
     mode: Mode,
     onSelectMode: (Mode) -> Unit,
     onSendText: (String) -> Unit,
+    attachment: Photo?,
+    onRemoveAttachment: () -> Unit,
+    onSendPhoto: (text: String, translate: Boolean) -> Unit,
     onMic: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -212,7 +242,18 @@ private fun ChatPanel(
         if (hud.status != Status.Idle && hud.status != Status.Error) {
             BasicText(statusLabel(hud.status), style = TitleStyle, maxLines = 1)
         }
-        InputRow(status = hud.status, mode = mode, onSendText = onSendText, onMic = onMic)
+        // 첨부한 사진이 있으면 분석할지 번역할지 고르고, 글을 덧붙여 보낼 수 있다.
+        var translate by remember(attachment) { mutableStateOf(false) }
+        if (attachment != null) {
+            AttachmentRow(attachment, translate = translate, onSelect = { translate = it }, onRemove = onRemoveAttachment)
+        }
+        InputRow(
+            status = hud.status,
+            mode = mode,
+            onSendText = { text -> if (attachment != null) onSendPhoto(text, translate) else onSendText(text) },
+            allowEmpty = attachment != null,
+            onMic = onMic,
+        )
     }
 }
 
@@ -269,12 +310,12 @@ private fun Bubble(entry: LogEntry, transparent: Boolean) {
 
 /** 글자 입력칸, 보내기, 말하기 버튼. 말하기 버튼은 화면 탭과 같은 일을 한다. */
 @Composable
-private fun InputRow(status: Status, mode: Mode, onSendText: (String) -> Unit, onMic: () -> Unit) {
+private fun InputRow(status: Status, mode: Mode, onSendText: (String) -> Unit, allowEmpty: Boolean, onMic: () -> Unit) {
     val input = rememberTextFieldState()
     val keyboard = LocalSoftwareKeyboardController.current
     val send = {
         val text = input.text.toString()
-        if (text.isNotBlank()) {
+        if (text.isNotBlank() || allowEmpty) {
             onSendText(text)
             input.clearText()
             keyboard?.hide()
@@ -324,13 +365,40 @@ private fun MicButton(status: Status, mode: Mode, onClick: () -> Unit) {
     }
 }
 
+/** 채팅 입력줄 위에 붙는 첨부 사진: 작은 미리보기, 분석/번역 선택, 떼어내기. */
 @Composable
-private fun CaptureNotice(text: String, modifier: Modifier = Modifier) {
-    BasicText(
-        text,
-        modifier = modifier.background(CardFill, PillShape).border(1.dp, CardLine, PillShape).padding(horizontal = 16.dp, vertical = 10.dp),
-        style = BodyStyle,
-    )
+private fun AttachmentRow(photo: Photo, translate: Boolean, onSelect: (Boolean) -> Unit, onRemove: () -> Unit) {
+    val preview = remember(photo) {
+        runCatching { BitmapFactory.decodeByteArray(photo.jpeg, 0, photo.jpeg.size)?.asImageBitmap() }.getOrNull()
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (preview != null) {
+            Image(
+                bitmap = preview,
+                contentDescription = "첨부한 사진",
+                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).border(1.dp, CardLine, RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop,
+            )
+        }
+        Row(Modifier.background(Color(0x66000000), PillShape).border(1.dp, CardLine, PillShape).padding(4.dp)) {
+            ModeOption("분석", selected = !translate, onClick = { onSelect(false) })
+            ModeOption("번역", selected = translate, onClick = { onSelect(true) })
+        }
+        IconButton(HudIcon.Close, "첨부 사진 떼어내기", onClick = onRemove, modifier = Modifier.size(40.dp))
+    }
+}
+
+/** 촬영 결과 알림. 사진을 찍은 직후에는 그 사진을 채팅창에 첨부하는 "분석" 버튼이 붙는다. */
+@Composable
+private fun CaptureNotice(text: String, onAnalyze: (() -> Unit)?, modifier: Modifier = Modifier) {
+    Row(
+        modifier.background(CardFill, PillShape).border(1.dp, CardLine, PillShape).padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        BasicText(text, style = BodyStyle, modifier = Modifier.padding(vertical = 6.dp).padding(end = if (onAnalyze == null) 10.dp else 0.dp))
+        if (onAnalyze != null) PillButton("분석", onClick = onAnalyze, primary = true)
+    }
 }
 
 

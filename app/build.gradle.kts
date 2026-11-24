@@ -41,6 +41,7 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.video)
     implementation(libs.androidx.camera.compose)
+    implementation(libs.androidx.exifinterface)
 
     testImplementation(libs.junit)
 }

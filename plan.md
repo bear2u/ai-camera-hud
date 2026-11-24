@@ -180,6 +180,12 @@ Rokid AI Glasses(https://kr.rokid.com/rokid-ai-glasses)처럼 동작하는 Andro
 - [ ] 실제로 걸으며 확인: 단계 전환 거리, 화살표 방향(나침반 정확도), 음성 안내
 - [ ] 이후: 말로 목적지 정하기, 경로 이탈 시 재탐색, 지도 미리보기
 
+### 찍은 사진 첨부 (2026-11-24 추가)
+- [x] 찍은 사진 보관: `CaptureActionsTest`(사진 보관, 실패, shouldForgetThePhotoWhenCleared)
+- [x] 사진 보내기: shouldSendAttachedPhotoWithTextForAnalysis, shouldTranslateAttachedPhotoWithoutText, shouldLabelPhotoWithoutTextAsAnalysis, shouldIgnoreAttachedPhotoWhileBusyAndStopLeftoverPlaybackOtherwise
+- [x] 촬영 알림의 "분석" 버튼 → 채팅 입력줄에 사진 첨부(미리보기, 분석/번역 선택, 떼어내기) → 글과 함께 전송, 답은 글자로 채팅창에 표시. 에뮬레이터에서 첨부·떼어내기 확인
+- [ ] 실제 키로 첨부 사진의 분석·번역 답 확인 (폰 연결 필요)
+
 ### 이후 단계 (이번 범위 밖)
 화면 속 사물 위치 라벨(기기 내 사물 검출 + AI 이름 붙이기), 장소 정보(위치 + 지도 API), 웨이크워드, 60분 세션 만료 재연결, 임시 키 백엔드, WebRTC 전송, 오프라인 번역, 텔레프롬프터, 내비게이션.
 

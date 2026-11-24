@@ -29,6 +29,13 @@ class GlassesSession(
 
     /** 사진으로 요청한 일이 문제 풀이면 true, 글자 번역이면 false. */
     private var solving = false
+        set(value) {
+            field = value
+            textTarget = if (value) Speaker.Solution else Speaker.Translation
+        }
+
+    /** 글자로 오는 답을 채팅창의 어느 종류로 쌓을지. */
+    private var textTarget = Speaker.Translation
 
     /** 이번 듣기에서 서버로 보낸 소리가 있으면 true. */
     private var audioSent = false
@@ -185,6 +192,23 @@ class GlassesSession(
         transport.send(ClientEvents.responseCreate(listOf("text"), TRANSLATE_INSTRUCTIONS))
     }
 
+    /** 채팅창에 첨부한 사진을 글과 함께 보내 분석을 글자로 받는다. */
+    @Synchronized
+    fun sendPhoto(photo: Photo, text: String, translate: Boolean) {
+        if (hud.status != Status.Idle) return
+        stopPlayback()
+        val request = text.trim()
+        solving = false
+        textTarget = if (translate) Speaker.Translation else Speaker.Assistant
+        val label = request.ifEmpty { if (translate) "번역" else "분석" }
+        hud = nextTurn(Status.Thinking).copy(userText = "[사진] $label")
+        transport.send(ClientEvents.imageItem(photo.jpeg, detail = "high"))
+        if (request.isNotEmpty()) transport.send(ClientEvents.textItem(request))
+        transport.send(
+            ClientEvents.responseCreate(listOf("text"), if (translate) TRANSLATE_INSTRUCTIONS else ANALYZE_INSTRUCTIONS),
+        )
+    }
+
     /** 채팅창에 글자로 입력한 질문을 지금 보이는 장면과 함께 보낸다. */
     @Synchronized
     fun sendText(text: String) {
@@ -248,10 +272,10 @@ class GlassesSession(
                 if (conversing) {
                     appendCaption(received.text)
                 } else if (hud.status == Status.Thinking) {
-                    hud = if (solving) {
-                        hud.copy(solutionText = hud.solutionText + received.text)
-                    } else {
-                        hud.copy(translationText = hud.translationText + received.text)
+                    hud = when (textTarget) {
+                        Speaker.Solution -> hud.copy(solutionText = hud.solutionText + received.text)
+                        Speaker.Assistant -> hud.copy(assistantText = hud.assistantText + received.text)
+                        else -> hud.copy(translationText = hud.translationText + received.text)
                     }
                 }
             is ServerEvent.InputTranscript -> hud = hud.copy(userText = received.text)
@@ -294,6 +318,9 @@ class GlassesSession(
                 "문제를 풀 때는 먼저 '답: ...'을 한 줄로 쓰고, 이어서 '풀이:' 아래에 핵심 단계를 " +
                 "번호를 붙여 짧게 써라. 한국어로 쓰고, 수식은 LaTeX나 마크다운 없이 일반 문자(예: x^2, √, ×, ÷)로 써라. " +
                 "문제가 여러 개면 번호별로 답하고, 문제가 보이지 않거나 글씨를 읽을 수 없으면 그렇게만 말해라."
+        const val ANALYZE_INSTRUCTIONS =
+            "방금 받은 사진을 분석해 한국어로 설명해라. 사용자가 글로 요청한 것이 있으면 그 요청에 맞게 답해라. " +
+                "무엇이 찍혔는지, 눈에 띄는 글자나 숫자가 있으면 그 내용을 알려 주고, 마크다운 없이 짧은 문단으로 써라."
         const val TRANSLATE_INSTRUCTIONS =
             "방금 받은 사진에 보이는 글자(간판, 메뉴, 표지판 등)를 읽고 한국어로 번역해라. " +
                 "'원문 → 번역' 형식으로 한 줄에 하나씩만 써라. 글자가 없으면 '보이는 글자가 없습니다'라고만 답해라."

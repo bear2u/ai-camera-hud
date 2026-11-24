@@ -625,4 +625,67 @@ class GlassesSessionTest {
         assertEquals(ClientEvents.responseCreate(listOf("audio")), transport.sent.last())
         assertEquals(Status.Thinking, session.hud.status)
     }
+
+    @Test
+    fun shouldSendAttachedPhotoWithTextForAnalysis() {
+        connect()
+
+        session.sendPhoto(Photo(byteArrayOf(5, 5)), "  이거 뭐야?  ", translate = false)
+
+        assertEquals(HudState(status = Status.Thinking, userText = "[사진] 이거 뭐야?"), session.hud)
+        assertEquals(ClientEvents.imageItem(byteArrayOf(5, 5), detail = "high"), transport.sent[1])
+        assertEquals(ClientEvents.textItem("이거 뭐야?"), transport.sent[2])
+        val response = Json.parseToJsonElement(transport.sent[3]).jsonObject.getValue("response").jsonObject
+        assertEquals(listOf("text"), response.getValue("output_modalities").jsonArray.map { it.jsonPrimitive.content })
+        assertTrue(response.getValue("instructions").jsonPrimitive.content.contains("사진을 분석"))
+
+        receive("""{"type":"response.output_text.delta","delta":"머그컵입니다."}""")
+        receive("""{"type":"response.done"}""")
+
+        assertEquals(HudState(status = Status.Idle, userText = "[사진] 이거 뭐야?", assistantText = "머그컵입니다."), session.hud)
+    }
+
+    @Test
+    fun shouldTranslateAttachedPhotoWithoutText() {
+        connect()
+
+        session.sendPhoto(Photo(byteArrayOf(5, 5)), "", translate = true)
+        receive("""{"type":"response.output_text.delta","delta":"EXIT → 출구"}""")
+
+        assertEquals(listOf("session.update", "conversation.item.create", "response.create"), sentTypes())
+        val response = Json.parseToJsonElement(transport.sent.last()).jsonObject.getValue("response").jsonObject
+        assertTrue(response.getValue("instructions").jsonPrimitive.content.contains("한국어로 번역"))
+        assertEquals(HudState(status = Status.Thinking, userText = "[사진] 번역", translationText = "EXIT → 출구"), session.hud)
+    }
+
+    @Test
+    fun shouldLabelPhotoWithoutTextAsAnalysis() {
+        connect()
+
+        session.sendPhoto(Photo(byteArrayOf(5, 5)), "", translate = false)
+
+        assertEquals("[사진] 분석", session.hud.userText)
+        assertEquals(listOf("session.update", "conversation.item.create", "response.create"), sentTypes())
+    }
+
+    @Test
+    fun shouldIgnoreAttachedPhotoWhileBusyAndStopLeftoverPlaybackOtherwise() {
+        connect()
+        session.tap()
+
+        session.sendPhoto(Photo(byteArrayOf(5, 5)), "듣는 중", translate = false)
+
+        assertEquals(Status.Listening, session.hud.status)
+        assertEquals(listOf("session.update"), sentTypes())
+
+        session.tap()
+        receive("""{"type":"response.output_audio.delta","item_id":"item_9","delta":"AQID"}""")
+        receive("""{"type":"response.done"}""")
+        sink.playedMs = 500
+
+        session.sendPhoto(Photo(byteArrayOf(5, 5)), "", translate = false)
+
+        assertTrue(transport.sent.contains(ClientEvents.truncate("item_9", 500)))
+        assertEquals(Status.Thinking, session.hud.status)
+    }
 }
